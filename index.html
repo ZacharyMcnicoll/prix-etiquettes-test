@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Changement de prix - Générateur Excel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root {
+    --blue: #2E75B6;
+    --blue-dark: #1F3864;
+    --row-a: #D9E1F2;
+    --row-b: #EBF0FA;
+    --green: #1a7a1a;
+    --red: #b3261e;
+    --bg: #f4f6fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--bg);
+    margin: 0;
+    padding: 24px;
+    color: #1a1a1a;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 {
+    font-size: 22px;
+    color: var(--blue-dark);
+    margin-bottom: 4px;
+  }
+  .subtitle { color: #555; margin-bottom: 24px; font-size: 14px; }
+  .card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .card h2 {
+    font-size: 15px;
+    color: var(--blue-dark);
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  label { font-size: 13px; font-weight: bold; display: block; margin-bottom: 6px; color: #333; }
+  .dropzone {
+    border: 2px dashed #a9bcd6;
+    border-radius: 8px;
+    padding: 28px;
+    text-align: center;
+    color: #556;
+    background: #fafcff;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .dropzone.dragover { background: #eaf2fd; border-color: var(--blue); }
+  .dropzone input[type=file] { display: none; }
+  .filelist { margin-top: 12px; font-size: 13px; }
+  .filelist .f { padding: 6px 10px; background: #f1f4f9; border-radius: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .filelist .f button { background: none; border: none; color: #b3261e; cursor: pointer; font-size: 13px; }
+  button.primary {
+    background: var(--blue);
+    color: white;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 14px;
+  }
+  button.primary:disabled { background: #9db6cf; cursor: not-allowed; }
+  button.secondary {
+    background: white;
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  table.supptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.supptable th { text-align: left; color: white; background: var(--blue-dark); padding: 6px 8px; }
+  table.supptable td { padding: 4px 6px; border-bottom: 1px solid #eee; }
+  table.supptable input { width: 100%; border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 13px; }
+  table.supptable tr:nth-child(even) td { background: #fafbfd; }
+  .suppwrap { max-height: 260px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; }
+  .rowbtn { color: #b3261e; cursor: pointer; font-size: 12px; background: none; border: none; }
+  #log { font-size: 13px; color: #444; margin-top: 12px; white-space: pre-wrap; }
+  .summary-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  .summary-table th, .summary-table td { padding: 6px 10px; border-bottom: 1px solid #eee; text-align: left; }
+  .summary-table th { background: var(--blue-dark); color: white; }
+  .summary-table caption { text-align: left; font-weight: bold; color: var(--blue-dark); padding: 10px 0 4px; font-size: 13px; }
+  .badge { display:inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+  .badge.ok { background: #e3f3e3; color: var(--green); }
+  .badge.warn { background: #fdeeee; color: var(--red); }
+  .alertbox {
+    display: none;
+    background: #fdeeee;
+    border: 1px solid #f2b8b5;
+    color: #7a1a13;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  .kv-grid { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; font-size: 13px; margin-top: 6px; }
+  .kv-grid div.k { font-weight: bold; color: #333; }
+  .dept-block { border: 1px solid #e3e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; background: #fbfcfe; }
+  .dept-block h3 { margin: 0 0 8px 0; font-size: 14px; color: var(--blue-dark); }
+  .dept-block .summary-table { margin-top: 10px; }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; border: 2px solid #cdd;
+    border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite;
+    vertical-align: -2px; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hint { font-size: 12px; color: #777; margin-top: 6px; }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .topbar > div:first-child { flex: 1; min-width: 0; }
+  .gearbtn {
+    background: white; border: 1px solid #ccd6e6; color: #667; padding: 7px 14px;
+    border-radius: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  }
+  .gearbtn:hover { border-color: var(--blue); color: var(--blue); }
+  input[type=text], input[type=password] {
+    padding: 9px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1>Changement de prix — Générateur Excel</h1>
+      <div class="subtitle">Glissez les PDF de variation de prix (une ou plusieurs succursales, un ou plusieurs fournisseurs) — la succursale et le département sont détectés automatiquement dans chaque PDF. Tout se passe dans votre navigateur, aucun fichier n'est envoyé sur internet.</div>
+    </div>
+    <button class="gearbtn" id="suppSettingsBtn" type="button">⚙ Fournisseurs</button>
+  </div>
+
+  <div class="card" id="suppPanel" style="display:none;">
+    <div id="suppLockView">
+      <div class="hint" style="margin-bottom:10px;">Section de configuration — modification rarement nécessaire. Un code administrateur est requis.</div>
+      <label for="suppCodeInput">Code administrateur</label>
+      <input type="password" id="suppCodeInput" placeholder="••••" style="max-width:160px;">
+      <button class="secondary" id="suppUnlockBtn" style="margin-left:8px;">Déverrouiller</button>
+      <div class="hint" id="suppCodeError" style="display:none; color:#b3261e; margin-top:8px;">Code incorrect.</div>
+    </div>
+    <div id="suppUnlockedView" style="display:none;">
+      <div class="hint" style="margin-bottom:10px;">
+        Si un code fournisseur n'est pas dans cette liste, l'outil affichera "Fournisseur [code]" à la place du nom — le calcul des prix reste correct, seul l'étiquette de section change. Ajoutez ou corrigez des noms au besoin ; c'est sauvegardé automatiquement sur cet ordinateur.
+      </div>
+      <div class="suppwrap">
+        <table class="supptable" id="suppTable">
+          <thead><tr><th style="width:80px;">Code</th><th>Nom du fournisseur</th><th style="width:40px;"></th></tr></thead>
+          <tbody id="suppBody"></tbody>
+        </table>
+      </div>
+      <button class="secondary" id="addSuppBtn" style="margin-top:10px;">+ Ajouter un fournisseur</button>
+      <button class="secondary" id="resetSuppBtn" style="margin-top:10px;">Réinitialiser la liste par défaut</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="dropzone" id="dropzone">
+      <div id="dzText">📄 Glissez vos PDF ici, ou cliquez pour choisir des fichiers</div>
+      <input type="file" id="fileInput" accept="application/pdf" multiple>
+    </div>
+    <div class="hint">Vous pouvez déposer plusieurs fichiers, de plusieurs succursales, en une seule fois. Si un fichier n'est pas un rapport PDF valide (mauvais format, téléchargement inachevé, etc.), il sera automatiquement ignoré et expliqué dans le résultat — les autres fichiers seront traités normalement.</div>
+    <div class="filelist" id="fileList"></div>
+    <button class="primary" id="genBtn" disabled>Générer le fichier Excel</button>
+    <div id="log"></div>
+    <div class="alertbox" id="alertBox"></div>
+  </div>
+
+  <div class="card" id="resultsCard" style="display:none;">
+    <h2>Résultat</h2>
+    <div class="hint" id="resultSummary" style="font-size:14px; color:#333; margin-bottom:14px;"></div>
+    <div id="departmentResults"></div>
+    <table class="summary-table" id="excludedTable"></table>
+  </div>
+
+</div>
+
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+</script>
+<script type="module">
+
+const SOFTWARE_VERSION = 'V2.0';
+
+// ==================== Coeur du parsing (identique à la version validée) ====================
+const NUMERO_RE = /^(\d{2,3})-[A-Z0-9=./-]+$/;
+const DIVIDER_RE = /^=+$/;
+const PRICE_RE = /^\d+\.\d{2}$/;
+const CHAR_FIX = { '╔': 'É', '└': 'À', '╬': 'Î', '┬': 'Â' };
+const FORBIDDEN_DESC_WORDS = ["JKT","GLOVE","BOOTS","HELMET","PANT","CASQUE","VISIERE","COUVRE"];
+
+// Arrondi centralisé à 2 décimales pour toute valeur monétaire écrite dans le classeur Excel.
+// Utilisé partout où un prix (Ancien Prix, Nouveau Prix, Différence) est calculé ou stocké,
+// afin d'éviter que l'imprécision native des nombres à virgule flottante en JavaScript
+// (ex: 29.95 - 19.99 = 9.959999999999999) ne se retrouve dans la valeur interne du fichier
+// Excel généré. Number.EPSILON compense les cas limites de type Math.round(1.005 * 100).
+function round2(n) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function fixText(t) {
+  let out = '';
+  for (const ch of t) out += CHAR_FIX[ch] || ch;
+  return out;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function clusterRows(words, yTol = 5) {
+  const sorted = [...words].sort((a, b) => a.top - b.top);
+  const rows = [];
+  let current = [];
+  let anchor = null;
+  for (const w of sorted) {
+    if (anchor === null || Math.abs(w.top - anchor) <= yTol) {
+      current.push(w);
+      if (anchor === null) anchor = w.top;
+    } else {
+      rows.push(current);
+      current = [w];
+      anchor = w.top;
+    }
+  }
+  if (current.length) rows.push(current);
+  return rows;
+}
+
+function getColumnZones(words) {
+  const byTop = new Map();
+  for (const w of words) {
+    if (DIVIDER_RE.test(w.text)) {
+      const key = Math.round(w.top * 10) / 10;
+      if (!byTop.has(key)) byTop.set(key, []);
+      byTop.get(key).push([w.x0, w.x1]);
+    }
+  }
+  return [...byTop.entries()].sort((a, b) => a[0] - b[0])
+    .map(([top, segs]) => [top, segs.sort((a, b) => a[0] - b[0])]);
+}
+
+function assignColumn(x0, x1, zones) {
+  const center = (x0 + x1) / 2;
+  for (let i = 0; i < zones.length; i++) {
+    const [zx0, zx1] = zones[i];
+    if (center >= zx0 - 5 && center <= zx1 + 5) return i;
+  }
+  let bestI = null, bestD = null;
+  for (let i = 0; i < zones.length; i++) {
+    const [zx0, zx1] = zones[i];
+    const zc = (zx0 + zx1) / 2;
+    const d = Math.abs(center - zc);
+    if (bestD === null || d < bestD) { bestD = d; bestI = i; }
+  }
+  return bestI;
+}
+
+function parsePdfPages(pages) {
+  const rowsOut = [];
+  const excluded = [];
+  for (let pi = 0; pi < pages.length; pi++) {
+    const rawWords = pages[pi].words.map(w => ({ ...w, text: fixText(w.text) }));
+    const zoneInfo = getColumnZones(rawWords);
+    if (!zoneInfo.length) continue;
+    const [headerTop, colZones] = zoneInfo[0];
+    if (colZones.length < 5) continue;
+    const footerTop = zoneInfo.length > 1 ? zoneInfo[zoneInfo.length - 1][0] : null;
+    const dataWords = rawWords.filter(w => w.top > headerTop + 3 && (footerTop === null || w.top < footerTop - 1));
+    const rows = clusterRows(dataWords, 5);
+
+    const NUM_I = 0, DESC_I = 1, EN_I = 2, DET_I = 4, NEW_I = 5;
+    let current = null;
+    const flush = () => { if (current) rowsOut.push(current); current = null; };
+
+    for (const rowWords of rows) {
+      const sortedRow = [...rowWords].sort((a, b) => a.x0 - b.x0);
+      const cols = new Map();
+      for (const w of sortedRow) {
+        const idx = assignColumn(w.x0, w.x1, colZones);
+        if (!cols.has(idx)) cols.set(idx, []);
+        cols.get(idx).push(w);
+      }
+      const grab = (idx, sep) => (cols.get(idx) || []).sort((a, b) => a.x0 - b.x0).map(w => w.text).join(sep);
+      const numeroText = grab(NUM_I, '');
+      const descText = grab(DESC_I, ' ');
+      const enText = grab(EN_I, '');
+      const detText = grab(DET_I, '');
+      const newText = grab(NEW_I, '');
+      const isNewProduct = NUMERO_RE.test(numeroText);
+
+      if (isNewProduct) {
+        flush();
+        current = { numero: numeroText, desc: descText ? [descText] : [], enmainRaw: enText, detailRaw: detText, nouveauRaw: newText, page: pi };
+      } else if (numeroText === '' && descText && !enText && !detText && !newText) {
+        if (current) current.desc.push(descText);
+      } else if (numeroText === '' && !descText && !enText && !detText && !newText) {
+        continue;
+      } else {
+        excluded.push({ reason: 'numero_invalide_ou_decalage', numero: numeroText, desc: descText, page: pi });
+      }
+    }
+    flush();
+  }
+  return { rows: rowsOut, excluded };
+}
+
+function validateAndBuild(rawRows, supplierLookup) {
+  const valid = [];
+  const excluded = [];
+  for (const r of rawRows) {
+    const numero = r.numero;
+    const desc = r.desc.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    const reasons = [];
+    if (!NUMERO_RE.test(numero)) reasons.push('numero_regex_fail');
+    if (FORBIDDEN_DESC_WORDS.some(fw => numero.includes(fw))) reasons.push('numero_contains_description_word');
+
+    const enRaw = r.enmainRaw.trim().replace(/,/g, '');
+    let enVal = null;
+    if (enRaw === '') enVal = 0;
+    else if (/^\d+$/.test(enRaw)) enVal = parseInt(enRaw, 10);
+    else reasons.push('enmain_not_numeric');
+
+    const detRaw = r.detailRaw.trim().replace(/,/g, '');
+    const newRaw = r.nouveauRaw.trim().replace(/,/g, '');
+    let detVal = null, newVal = null;
+    if (PRICE_RE.test(detRaw)) detVal = round2(parseFloat(detRaw)); else reasons.push('ancien_prix_not_numeric');
+    if (PRICE_RE.test(newRaw)) newVal = round2(parseFloat(newRaw)); else reasons.push('nouveau_prix_not_numeric');
+
+    if (reasons.length) { excluded.push({ numero, desc, reasons, page: r.page }); continue; }
+    if (enVal <= 0) { excluded.push({ numero, desc, reasons: ['enmain_not_positive'], page: r.page }); continue; }
+
+    const storeOld = round2(Math.floor(detVal) + 0.99);
+    const storeNew = round2(Math.floor(newVal) + 0.99);
+    if (round2(storeOld - storeNew) === 0) {
+      excluded.push({ numero, desc, reasons: ['no_real_store_price_change'], page: r.page });
+      continue;
+    }
+
+    const codeMatch = numero.match(NUMERO_RE);
+    const code = codeMatch[1];
+    const codeKey = String(parseInt(code, 10));
+    const supplier = (supplierLookup && supplierLookup[codeKey]) || `Fournisseur ${code}`;
+
+    valid.push({ numero, desc, enMain: enVal, ancien: detVal, nouveau: newVal, diff: round2(newVal - detVal), code, supplier });
+  }
+  return { valid, excluded };
+}
+
+// ==================== Détection succursale / département (en-tête PDF) ====================
+function detectMetadata(firstPageWords) {
+  const headerWords = firstPageWords
+    .filter(w => w.top < 65)
+    .sort((a, b) => (a.top - b.top) || (a.x0 - b.x0));
+
+  const sportIdx = headerWords.findIndex(w => w.text === 'SPORT');
+  let branch = null;
+  if (sportIdx !== -1) {
+    const sportTop = headerWords[sportIdx].top;
+    const rest = headerWords.slice(sportIdx + 1).filter(w => Math.abs(w.top - sportTop) < 3);
+    const branchWords = [];
+    for (const w of rest) {
+      if (w.text === 'Page:') break;
+      branchWords.push(w.text);
+    }
+    branch = branchWords.join(' ').trim() || null;
+  }
+
+  const slashIdx = headerWords.findIndex(w => w.text === '/');
+  let department = null;
+  if (slashIdx !== -1) {
+    const slashTop = headerWords[slashIdx].top;
+    const rest = headerWords.slice(slashIdx + 1).filter(w => Math.abs(w.top - slashTop) < 3);
+    department = rest.map(w => w.text).join(' ').trim() || null;
+  }
+
+  return { branch, department };
+}
+
+const DEPARTMENT_LABELS = { 'PIECES': 'Pièces', 'VETEMENTS': 'Vêtements', 'MODE': 'Mode' };
+function departmentLabel(rawDepartment) {
+  if (!rawDepartment) return null;
+  const key = rawDepartment.toUpperCase().trim();
+  return DEPARTMENT_LABELS[key] || rawDepartment;
+}
+
+function sanitizeSheetName(name, usedNames) {
+  let clean = String(name || 'Succursale').replace(/[\\/?*[\]:]/g, ' ').replace(/\s+/g, ' ').trim();
+  clean = clean.replace(/^'+/, '').replace(/'+$/, '').trim();
+  if (!clean) clean = 'Succursale';
+  if (clean.length > 31) clean = clean.slice(0, 31).trim();
+  let candidate = clean;
+  let n = 2;
+  while (usedNames.has(candidate.toUpperCase())) {
+    const suffix = ` (${n})`;
+    candidate = clean.slice(0, 31 - suffix.length) + suffix;
+    n += 1;
+  }
+  usedNames.add(candidate.toUpperCase());
+  return candidate;
+}
+
+// ==================== Portail de validation du lot (multi-fichiers, multi-succursales) ====================
+// Forme commune a tous les resultats de fichier "ignore", quelle que soit la raison —
+// utilisee par processFile ci-dessous et par les controles de format en amont (voir
+// classifyAndProcessFile plus bas) pour que processBatch n'ait jamais a distinguer leur origine.
+function excludedResult(fileName, status, reason) {
+  return {
+    fileName, status, reason,
+    branch: null, department: null, rows: [],
+    stats: { rawRows: 0, validRows: 0, excludedRows: 0 },
+  };
+}
+
+function processFile(fileName, pages, supplierLookup) {
+  if (!pages || pages.length === 0) {
+    return excludedResult(fileName, 'excluded_error', 'PDF vide ou illisible (aucune page extraite).');
+  }
+
+  let meta;
+  try {
+    meta = detectMetadata(pages[0].words);
+  } catch (e) {
+    meta = { branch: null, department: null };
+  }
+
+  const { rows: rawRows } = parsePdfPages(pages);
+
+  // Un PDF lisible mais dont la structure en colonnes attendue (diviseurs "====", 6 zones)
+  // est introuvable n'est probablement pas un rapport de variation de prix — plutot que de
+  // continuer et produire un resultat vide silencieusement, on le signale explicitement.
+  if (rawRows.length === 0) {
+    return excludedResult(fileName, 'excluded_not_recognized',
+      "Ce PDF ne semble pas être un rapport de variation de prix reconnu (structure de colonnes introuvable).");
+  }
+
+  const { valid, excluded } = validateAndBuild(rawRows, supplierLookup);
+
+  if (!meta.branch) {
+    const res = excludedResult(fileName, 'excluded_no_branch', "Succursale non détectée dans l'en-tête du PDF.");
+    res.department = meta.department;
+    res.stats = { rawRows: rawRows.length, validRows: valid.length, excludedRows: excluded.length };
+    return res;
+  }
+
+  if (!meta.department) {
+    const res = excludedResult(fileName, 'excluded_no_department', "Département non détecté dans l'en-tête du PDF.");
+    res.branch = meta.branch;
+    res.stats = { rawRows: rawRows.length, validRows: valid.length, excludedRows: excluded.length };
+    return res;
+  }
+
+  const taggedRows = valid.map(r => ({ ...r, branch: meta.branch, department: meta.department, sourceFile: fileName }));
+
+  return {
+    fileName, status: 'ok', reason: null,
+    branch: meta.branch, department: meta.department, rows: taggedRows,
+    stats: { rawRows: rawRows.length, validRows: valid.length, excludedRows: excluded.length },
+  };
+}
+
+// Partitionne le lot par departement au lieu d'avorter des qu'il y en a plusieurs : chaque
+// departement detecte parmi les fichiers traites avec succes devient un "sous-lot" independant
+// (memes champs qu'avant : department, branches, allRows, fileResults/okResults/excludedResults),
+// pret a etre passe a buildWorkbookV2 individuellement. Un fichier exclu dont le departement a
+// tout de meme pu etre determine (ex. succursale non detectee mais departement lisible) est
+// rattache au sous-lot de CE departement, pour apparaitre dans son Resume. Un fichier totalement
+// inclassable (aucun departement determinable) va dans "globalExcluded", jamais dans un fichier
+// Excel specifique puisqu'il n'appartient a aucun departement en particulier.
+function splitByDepartment(fileResults) {
+  const okResults = fileResults.filter(r => r.status === 'ok');
+  const excludedResults = fileResults.filter(r => r.status !== 'ok');
+
+  const departments = [...new Set(okResults.map(r => r.department))].sort((a, b) => {
+    const la = departmentLabel(a) || a; const lb = departmentLabel(b) || b;
+    return String(la).localeCompare(String(lb), 'fr');
+  });
+
+  const batches = departments.map(dept => {
+    const deptOk = okResults.filter(r => r.department === dept);
+    const deptExcluded = excludedResults.filter(r => r.department === dept);
+    const allRows = deptOk.flatMap(r => r.rows);
+    const branches = [...new Set(allRows.map(r => r.branch))];
+    return {
+      department: dept,
+      branches,
+      allRows,
+      fileResults: [...deptOk, ...deptExcluded],
+      okResults: deptOk,
+      excludedResults: deptExcluded,
+      otherDepartments: departments.filter(d => d !== dept),
+    };
+  });
+
+  const globalExcluded = excludedResults.filter(r => !r.department);
+
+  return { batches, globalExcluded, fileResults, okResults, excludedResults };
+}
+
+// ==================== Regroupement à deux niveaux (succursale → fournisseur) ====================
+function groupBySupplier(validRows) {
+  const byCode = new Map();
+  for (const r of validRows) {
+    if (!byCode.has(r.code)) byCode.set(r.code, { supplier: r.supplier, code: parseInt(r.code, 10), rows: [] });
+    byCode.get(r.code).rows.push(r);
+  }
+  const sections = [...byCode.values()];
+  sections.sort((a, b) => a.code - b.code);
+  for (const s of sections) s.rows.sort((a, b) => a.numero.localeCompare(b.numero));
+  return sections;
+}
+
+function groupByBranchAndSupplier(allRows) {
+  const byBranch = new Map();
+  for (const r of allRows) {
+    const branch = r.branch || 'Succursale inconnue';
+    if (!byBranch.has(branch)) byBranch.set(branch, []);
+    byBranch.get(branch).push(r);
+  }
+
+  const branchNames = [...byBranch.keys()].sort((a, b) => a.localeCompare(b, 'fr'));
+  const usedSheetNames = new Set();
+
+  return branchNames.map(branch => {
+    const rows = byBranch.get(branch);
+    const sections = groupBySupplier(rows);
+    return {
+      branch,
+      sheetName: sanitizeSheetName(branch, usedSheetNames),
+      sections,
+      totalRows: rows.length,
+      supplierCount: sections.length,
+    };
+  });
+}
+
+// ==================== Nom de fichier dynamique ====================
+function titleCase(text) {
+  return String(text)
+    .toLowerCase()
+    .replace(/(^|[\s-])([a-zàâäéèêëïîôöùûüç])/g, (m, sep, ch) => sep + ch.toUpperCase());
+}
+function sanitizeFileNamePart(text) {
+  return String(text).replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function generateFileName(department, branches) {
+  const deptLabel = sanitizeFileNamePart(departmentLabel(department) || 'Departement inconnu');
+  const uniqueBranches = [...new Set(branches)].filter(Boolean);
+  if (uniqueBranches.length === 1) {
+    const branch = sanitizeFileNamePart(titleCase(uniqueBranches[0]));
+    return `Changement de prix - ${branch} - ${deptLabel}.xlsx`;
+  }
+  return `Changements de prix - Toutes les succursales - ${deptLabel}.xlsx`;
+}
+
+// Nom de l'archive ZIP quand plusieurs departements sont generes en une seule fois.
+function generateZipFileName(allBranches) {
+  const uniqueBranches = [...new Set(allBranches)].filter(Boolean);
+  if (uniqueBranches.length === 1) {
+    const branch = sanitizeFileNamePart(titleCase(uniqueBranches[0]));
+    return `Changements de prix - ${branch}.zip`;
+  }
+  return `Changements de prix - Toutes les succursales.zip`;
+}
+
+// ==================== Extraction PDF (pdf.js) ====================
+async function extractPagesFromFile(file) {
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const pages = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const viewport = page.getViewport({ scale: 1 });
+    const content = await page.getTextContent();
+    const words = content.items
+      .filter(it => it.str.trim() !== '')
+      .map(it => ({ text: it.str, x0: it.transform[4], x1: it.transform[4] + it.width, top: viewport.height - it.transform[5] }));
+    pages.push({ words });
+  }
+  return pages;
+}
+
+// ==================== Validation robuste des fichiers importés ====================
+// Un fichier problematique (mauvais format, telechargement inacheve, PDF protege ou
+// corrompu...) ne doit jamais bloquer le traitement des autres fichiers du lot, et sa
+// raison d'exclusion precise doit toujours etre visible plutot que devinee ou cachee.
+const INCOMPLETE_DOWNLOAD_SUFFIXES = ['.crdownload', '.part', '.partial', '.download', '.tmp'];
+
+function hasIncompleteDownloadSuffix(name) {
+  const lower = String(name || '').toLowerCase();
+  return INCOMPLETE_DOWNLOAD_SUFFIXES.some(suf => lower.endsWith(suf));
+}
+
+async function readMagicBytes(file, n) {
+  const buf = await file.slice(0, n).arrayBuffer();
+  return new Uint8Array(buf);
+}
+
+// Signature PDF standard : les fichiers PDF commencent toujours par les octets "%PDF-".
+// Verifier ces 5 octets est un test fiable et quasi instantane (aucune lecture complete du
+// fichier n'est necessaire) pour distinguer un vrai PDF d'un fichier renomme ou d'un autre
+// format, avant meme de tenter une analyse complete avec pdf.js.
+function looksLikePdfMagic(bytes) {
+  const sig = [0x25, 0x50, 0x44, 0x46, 0x2d]; // % P D F -
+  if (!bytes || bytes.length < sig.length) return false;
+  return sig.every((b, i) => bytes[i] === b);
+}
+
+async function classifyAndProcessFile(file, supplierLookup) {
+  if (hasIncompleteDownloadSuffix(file.name)) {
+    return excludedResult(file.name, 'excluded_incomplete_download',
+      "Téléchargement incomplet (fichier temporaire de navigateur, ex. .crdownload) — le téléchargement n'est probablement pas terminé.");
+  }
+
+  let magicOk = false;
+  try {
+    magicOk = looksLikePdfMagic(await readMagicBytes(file, 5));
+  } catch (e) {
+    magicOk = false;
+  }
+  if (!magicOk) {
+    return excludedResult(file.name, 'excluded_not_pdf', "Format non reconnu : ce fichier n'est pas un PDF valide.");
+  }
+
+  let pages;
+  try {
+    pages = await extractPagesFromFile(file);
+  } catch (e) {
+    const name = e && e.name;
+    if (name === 'PasswordException') {
+      return excludedResult(file.name, 'excluded_password', "PDF protégé par un mot de passe — impossible de l'ouvrir automatiquement.");
+    }
+    if (name === 'InvalidPDFException') {
+      return excludedResult(file.name, 'excluded_corrupt', "PDF corrompu ou endommagé — impossible de le lire.");
+    }
+    return excludedResult(file.name, 'excluded_error', `PDF illisible (${e && e.message ? e.message : 'erreur inconnue'}).`);
+  }
+
+  return processFile(file.name, pages, supplierLookup);
+}
+
+// ==================== Génération Excel (ExcelJS) — classeur multi-onglets + Résumé ====================
+const MONEY_FMT = '#,##0.00" $"';
+const DIFF_FMT = '+#,##0.00" $";-#,##0.00" $"';
+const BANNER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E75B6' } };
+const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
+const ROW_FILL_A = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+const ROW_FILL_B = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF0FA' } };
+const BANNER_FONT = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+const HEADER_FONT = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+const DATA_FONT = { name: 'Arial', size: 10 };
+const GREEN_FONT = { name: 'Arial', size: 10, color: { argb: 'FF006100' } };
+const RED_FONT = { name: 'Arial', size: 10, color: { argb: 'FF9C0006' } };
+const CENTER = { horizontal: 'center', vertical: 'middle' };
+const LEFT_WRAP = { horizontal: 'left', vertical: 'middle', wrapText: true };
+const CENTER_WRAP = { horizontal: 'center', vertical: 'middle', wrapText: true };
+const COLS = ['N° Produit', 'Description', 'En Main', 'Ancien Prix', 'Nouveau Prix', 'Différence'];
+const PRINT_SETUP = {
+  orientation: 'landscape',
+  fitToPage: true,
+  fitToWidth: 1,
+  fitToHeight: 0,
+  margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
+};
+
+function applySectionRows(ws, sections) {
+  let r = 1, lastDataRow = null, alt = 0;
+  const sectionRanges = [];
+  let isFirstSection = true;
+
+  for (const section of sections) {
+    if (!section.rows.length) continue;
+
+    // Saut de page avant chaque nouveau fournisseur (sauf le tout premier) : un changement
+    // de fournisseur ne doit jamais se produire au milieu d'une page imprimée. On insere un
+    // saut de page manuel juste apres la derniere ligne de la section precedente ; si un
+    // fournisseur occupe plusieurs pages, il continue naturellement sur les pages suivantes
+    // puisque seul le DEBUT de chaque nouvelle section force un saut.
+    if (!isFirstSection && lastDataRow) {
+      ws.getRow(lastDataRow).addPageBreak();
+    }
+    isFirstSection = false;
+
+    ws.mergeCells(r, 1, r, COLS.length);
+    const bannerCell = ws.getCell(r, 1);
+    // Format "{code} - {nom fournisseur}" (ex: "01 - Kimpex") : le code fournisseur, utilisé
+    // sur les étiquettes/bons de livraison, doit toujours être visible d'un coup d'œil.
+    const codeStr = String(section.code).padStart(2, '0');
+    bannerCell.value = `${codeStr} - ${section.supplier}`;
+    bannerCell.alignment = CENTER;
+    for (let c = 1; c <= COLS.length; c++) {
+      const cell = ws.getCell(r, c);
+      cell.fill = BANNER_FILL;
+      cell.font = BANNER_FONT;
+    }
+    ws.getRow(r).height = 24;
+    r += 1;
+
+    COLS.forEach((name, i) => {
+      const cell = ws.getCell(r, i + 1);
+      cell.value = name;
+      cell.fill = HEADER_FILL;
+      cell.font = HEADER_FONT;
+      cell.alignment = CENTER;
+    });
+    r += 1;
+
+    const sectionStart = r;
+    for (const row of section.rows) {
+      alt += 1;
+      const fill = (alt % 2) ? ROW_FILL_A : ROW_FILL_B;
+      const dRow = r;
+      const c1 = ws.getCell(r, 1); c1.value = row.numero;
+      const c2 = ws.getCell(r, 2); c2.value = row.desc;
+      const c3 = ws.getCell(r, 3); c3.value = row.enMain;
+      const c4 = ws.getCell(r, 4); c4.value = row.ancien;
+      const c5 = ws.getCell(r, 5); c5.value = row.nouveau;
+      const c6 = ws.getCell(r, 6);
+      c6.value = { formula: `ROUND(E${dRow}-D${dRow},2)`, result: round2(row.nouveau - row.ancien) };
+      c1.alignment = CENTER_WRAP; c2.alignment = LEFT_WRAP; c3.alignment = CENTER; c4.alignment = CENTER; c5.alignment = CENTER; c6.alignment = CENTER;
+      c4.numFmt = MONEY_FMT; c5.numFmt = MONEY_FMT; c6.numFmt = DIFF_FMT;
+      for (const cc of [c1, c2, c3, c4, c5, c6]) { cc.font = DATA_FONT; cc.fill = fill; }
+      lastDataRow = r;
+      r += 1;
+    }
+    sectionRanges.push([sectionStart, r - 1]);
+  }
+
+  ws.getColumn(1).width = 16; ws.getColumn(2).width = 42; ws.getColumn(3).width = 10;
+  ws.getColumn(4).width = 14; ws.getColumn(5).width = 14; ws.getColumn(6).width = 14;
+
+  for (const [start, end] of sectionRanges) {
+    ws.addConditionalFormatting({
+      ref: `F${start}:F${end}`,
+      rules: [
+        { type: 'cellIs', operator: 'greaterThan', formulae: ['0'], priority: 1, style: { font: GREEN_FONT } },
+        { type: 'cellIs', operator: 'lessThan', formulae: ['0'], priority: 2, style: { font: RED_FONT } },
+      ],
+    });
+  }
+
+  // Pas d'autoFilter en V2 : un tri/filtre Excel sur une plage contenant plusieurs bannières
+  // fusionnées les réordonne indépendamment des données et les découple (bug confirmé en usage
+  // réel). Le document est avant tout destiné à l'impression : on privilégie une mise en page
+  // fixe et fiable plutôt que le tri/filtre.
+  //
+  // Pas de volet figé (Freeze Panes) non plus : chaque section a sa propre bannière fournisseur,
+  // donc figer la ligne 1 gardait affichée en permanence la bannière du TOUT PREMIER fournisseur
+  // même en défilant jusqu'à la dernière section (bug rapporté : "28 - Parts Canada" visible en
+  // bas de page alors que "04 - Thibault" restait affiché en haut). Excel ne permet pas de figer
+  // "la bannière de la section courante" dynamiquement — la seule option fiable est de ne rien
+  // figer du tout, pour ne jamais donner une information trompeuse pendant la navigation.
+  ws.views = [{ showGridLines: false }];
+  ws.pageSetup = { ...PRINT_SETUP };
+  if (lastDataRow) ws.pageSetup.printArea = `A1:F${lastDataRow}`;
+
+  return { lastDataRow };
+}
+
+// Estimation simple du nombre de lignes qu'occupera un texte avec retour a la ligne
+// automatique dans une colonne d'une largeur donnee (en nombre de caracteres). Sert
+// uniquement a calculer une hauteur de ligne suffisante pour eviter qu'une cellule a
+// texte multi-lignes chevauche visuellement la ligne suivante (c'etait la cause du
+// "Bug 1" rapporte : le contenu semblait duplique alors qu'il etait en realite coupe/
+// chevauchant faute de hauteur de ligne adequate — aucun contenu n'etait ecrit deux fois).
+function estimateWrappedLines(text, charsPerLine) {
+  if (!text) return 1;
+  let total = 0;
+  for (const line of String(text).split('\n')) {
+    total += Math.max(1, Math.ceil(line.length / charsPerLine));
+  }
+  return total;
+}
+
+// Formatage manuel de la date/heure (plutot que toLocaleDateString/toLocaleTimeString) :
+// le rendu de Intl.DateTimeFormat pour la locale 'fr-CA' varie selon le moteur JS du
+// navigateur (heure non zero-remplie dans certains cas, ex. "1 h 00 min 06 s" au lieu de
+// "01 h 00 min 06 s" -- facilement confondu avec un "l" en Arial). Un formatage manuel avec
+// zero-remplissage explicite est independant du navigateur et donc plus fiable.
+function pad2(n) { return String(n).padStart(2, '0'); }
+function formatDateFr(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function formatTimeFr(d) { return `${pad2(d.getHours())} h ${pad2(d.getMinutes())} min ${pad2(d.getSeconds())} s`; }
+
+const THIN_BORDER_STYLE = { style: 'thin', color: { argb: 'FFC3CFE3' } };
+const THIN_BORDER = { top: THIN_BORDER_STYLE, left: THIN_BORDER_STYLE, bottom: THIN_BORDER_STYLE, right: THIN_BORDER_STYLE };
+
+function clampWidth(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+function buildResumeSheet(wb, batchResult, groupedByBranch, meta) {
+  const ws = wb.addWorksheet('Résumé', { properties: { tabColor: { argb: 'FF2E75B6' } } });
+
+  const TITLE_FONT = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF1F3864' } };
+  const SUBTITLE_FONT = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF1F3864' } };
+  const WARN_TITLE_FONT = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFB3261E' } };
+  const LABEL_FONT = { name: 'Arial', size: 10, bold: true };
+  const VALUE_FONT = { name: 'Arial', size: 10 };
+  const STAT_VALUE_FONT = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1F3864' } };
+  const TABLE_HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
+  const TABLE_HEADER_FONT = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+  const OK_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9F2D9' } };
+  const EXCLU_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2D9D9' } };
+  const WARN_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCEFD0' } };
+
+  // Suit la longueur maximale de texte reellement ecrite dans les colonnes 1 a 4 (non
+  // enroulees) afin de calculer leur largeur automatiquement a la fin — plutot que des
+  // largeurs fixes devinees a l'avance, qui tronquaient visuellement certains contenus
+  // (ex. l'heure "01 h 05 min 06 s" dans une colonne de largeur 12). La colonne 5
+  // ("Détails" / listes de fichiers) reste a largeur fixe car son texte est enroulé
+  // (wrapText) sur plusieurs lignes par design.
+  const colMaxLen = [0, 0, 0, 0];
+  function trackWidth(col, text) {
+    const len = String(text ?? '').length;
+    if (len > colMaxLen[col - 1]) colMaxLen[col - 1] = len;
+  }
+
+  let r = 1;
+  ws.mergeCells(r, 1, r, 5);
+  ws.getCell(r, 1).value = 'Changement de prix — Résumé de génération';
+  ws.getCell(r, 1).font = TITLE_FONT;
+  ws.getRow(r).height = 26;
+  r += 2;
+
+  const deptLabel = departmentLabel(batchResult.department) || '—';
+
+  // Lorsque le lot depose contenait plusieurs departements, chacun est genere dans son propre
+  // fichier (voir splitByDepartment) : ce bandeau evite qu'un fichier ouvert isolement laisse
+  // croire a tort qu'il couvre TOUT ce qui a ete depose.
+  if (batchResult.otherDepartments && batchResult.otherDepartments.length) {
+    const otherLabels = batchResult.otherDepartments.map(d => departmentLabel(d) || d).join(', ');
+    ws.mergeCells(r, 1, r, 5);
+    const noteCell = ws.getCell(r, 1);
+    noteCell.value = `ℹ️  Ce fichier ne couvre que le département ${deptLabel}. ${batchResult.otherDepartments.length} autre(s) département(s) détecté(s) dans le même lot ont été générés séparément : ${otherLabels}.`;
+    noteCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF1F3864' } };
+    noteCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF2FD' } };
+    noteCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 };
+    noteCell.border = THIN_BORDER;
+    const noteLines = estimateWrappedLines(noteCell.value, 130);
+    ws.getRow(r).height = Math.max(18, noteLines * 14 + 6);
+    r += 2;
+  }
+
+  const totalSuppliers = new Set(batchResult.allRows.map(row => row.code)).size;
+  const totalChanges = batchResult.allRows.length;
+  const totalReceived = batchResult.fileResults.length;
+  const totalProcessed = batchResult.okResults.length;
+  const totalIgnored = batchResult.excludedResults.length;
+
+  // ---- Bloc statistiques : tableau borde a 2 colonnes (voir clampWidth / trackWidth plus
+  // haut pour la largeur automatique), incluant desormais un veritable bilan de traitement
+  // (PDF reçus / traités / ignorés) pour que l'acheteur confirme immediatement que tous les
+  // fichiers deposes ont bien ete pris en compte.
+  ws.getCell(r, 1).value = 'Statistiques de génération';
+  ws.getCell(r, 1).font = SUBTITLE_FONT;
+  r += 1;
+
+  ws.getCell(r, 1).value = 'Indicateur';
+  ws.getCell(r, 2).value = 'Valeur';
+  trackWidth(1, 'Indicateur'); trackWidth(2, 'Valeur');
+  for (let c = 1; c <= 2; c++) {
+    const cell = ws.getCell(r, c);
+    cell.fill = TABLE_HEADER_FILL;
+    cell.font = TABLE_HEADER_FONT;
+    cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle', indent: 1 } : CENTER;
+    cell.border = THIN_BORDER;
+  }
+  ws.getRow(r).height = 18;
+  r += 1;
+
+  const kv = [
+    ['Date de génération', formatDateFr(meta.generatedAt)],
+    ['Heure de génération', formatTimeFr(meta.generatedAt)],
+    ['Version du logiciel', meta.version],
+    ['Département détecté', deptLabel],
+    ['Nombre de succursales détectées', String(groupedByBranch.length)],
+    ['PDF reçus', String(totalReceived)],
+    ['PDF traités', String(totalProcessed)],
+    ['PDF ignorés', String(totalIgnored)],
+    ['Total de fournisseurs détectés', String(totalSuppliers)],
+    ['Total de changements retenus', String(totalChanges)],
+  ];
+  kv.forEach(([label, value], i) => {
+    trackWidth(1, label); trackWidth(2, value);
+    const fill = (i % 2) ? ROW_FILL_B : ROW_FILL_A;
+    const labelCell = ws.getCell(r, 1);
+    labelCell.value = label;
+    labelCell.font = LABEL_FONT;
+    labelCell.fill = fill;
+    labelCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    labelCell.border = THIN_BORDER;
+    const valueCell = ws.getCell(r, 2);
+    valueCell.value = value;
+    valueCell.font = STAT_VALUE_FONT;
+    valueCell.fill = fill;
+    valueCell.alignment = CENTER;
+    valueCell.border = THIN_BORDER;
+    ws.getRow(r).height = 18;
+    r += 1;
+  });
+  r += 1;
+
+  ws.mergeCells(r, 1, r, 5);
+  ws.getCell(r, 1).value = 'Détail par succursale';
+  ws.getCell(r, 1).font = SUBTITLE_FONT;
+  r += 1;
+
+  const headers = ['Succursale', 'Statut', 'Fournisseurs', 'Changements retenus', 'Fichiers sources'];
+  headers.forEach((h, i) => {
+    const cell = ws.getCell(r, i + 1);
+    cell.value = h;
+    cell.fill = TABLE_HEADER_FILL;
+    cell.font = TABLE_HEADER_FONT;
+    cell.alignment = CENTER;
+    cell.border = THIN_BORDER;
+    if (i < 4) trackWidth(i + 1, h);
+  });
+  ws.getRow(r).height = 18;
+  r += 1;
+
+  // Largeur approximative (en caracteres) de la colonne 5, utilisee seulement pour estimer
+  // le nombre de lignes necessaires et calculer une hauteur de ligne suffisante.
+  const COL5_CHARS = 46;
+
+  // Avertissements non bloquants (ex. un meme fournisseur provenant de plusieurs fichiers
+  // pour une meme succursale) : accumules pendant la boucle, affiches dans leur propre
+  // section plus bas seulement s'il y en a — jamais de bruit visuel quand tout est normal.
+  const warnings = [];
+
+  // Un fichier par ligne dans "Fichiers sources" (plutot qu'une liste separee par des
+  // virgules sur une seule ligne, difficile a lire des que plusieurs fichiers sont
+  // associes a une succursale). Cette table ne contient plus que les succursales traitees
+  // avec succes : les fichiers ignores ont leur propre section "Anomalies détectées" plus bas.
+  for (const b of groupedByBranch) {
+    const sourceFiles = [...new Set(b.sections.flatMap(s => s.rows.map(row => row.sourceFile)))];
+    const detailText = sourceFiles.map(f => `•  ${f}`).join('\n');
+    trackWidth(1, b.branch); trackWidth(2, 'OK'); trackWidth(3, b.supplierCount); trackWidth(4, b.totalRows);
+    ws.getCell(r, 1).value = b.branch;
+    ws.getCell(r, 2).value = 'OK';
+    ws.getCell(r, 3).value = b.supplierCount;
+    ws.getCell(r, 4).value = b.totalRows;
+    ws.getCell(r, 5).value = detailText;
+    for (let c = 1; c <= 5; c++) {
+      const cell = ws.getCell(r, c);
+      cell.fill = OK_FILL;
+      cell.font = VALUE_FONT;
+      cell.alignment = c === 5 ? { horizontal: 'left', vertical: 'top', wrapText: true } : CENTER;
+      cell.border = THIN_BORDER;
+    }
+    const lines = estimateWrappedLines(detailText, COL5_CHARS);
+    ws.getRow(r).height = Math.max(18, lines * 14 + 4);
+    r += 1;
+
+    // Un même fournisseur ne devrait normalement provenir que d'un seul fichier pour une
+    // succursale donnée. S'il en vient de plusieurs, ce n'est pas forcément une erreur (un
+    // rapport principal + un addenda, par exemple), mais ça mérite d'être signalé plutôt que
+    // deviné silencieusement — conformément à la philosophie demandée.
+    for (const s of b.sections) {
+      const filesForSupplier = [...new Set(s.rows.map(row => row.sourceFile))];
+      if (filesForSupplier.length > 1) {
+        const codeStr = String(s.code).padStart(2, '0');
+        warnings.push(`${b.branch} — ${codeStr} - ${s.supplier} : ce fournisseur apparaît dans ${filesForSupplier.length} fichiers différents (${filesForSupplier.join(', ')}). Vérifiez qu'il ne s'agit pas d'un doublon.`);
+      }
+    }
+  }
+
+  if (warnings.length) {
+    r += 1;
+    ws.mergeCells(r, 1, r, 5);
+    ws.getCell(r, 1).value = `Avertissements (${warnings.length})`;
+    ws.getCell(r, 1).font = WARN_TITLE_FONT;
+    r += 1;
+    for (const w of warnings) {
+      ws.mergeCells(r, 1, r, 5);
+      const cell = ws.getCell(r, 1);
+      cell.value = `⚠  ${w}`;
+      cell.font = VALUE_FONT;
+      cell.fill = WARN_FILL;
+      cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+      cell.border = THIN_BORDER;
+      const lines = estimateWrappedLines(w, 130);
+      ws.getRow(r).height = Math.max(18, lines * 14 + 4);
+      r += 1;
+    }
+  }
+
+  // ---- Anomalies détectées : chaque fichier ignoré, avec la raison précise (jamais un
+  // simple "PDF invalide" générique) — pour que l'utilisateur comprenne immédiatement
+  // pourquoi un fichier n'a pas été traité, sans avoir à refaire plusieurs essais.
+  if (batchResult.excludedResults.length) {
+    r += 1;
+    ws.mergeCells(r, 1, r, 5);
+    ws.getCell(r, 1).value = `Anomalies détectées (${batchResult.excludedResults.length})`;
+    ws.getCell(r, 1).font = WARN_TITLE_FONT;
+    r += 1;
+    for (const f of batchResult.excludedResults) {
+      ws.mergeCells(r, 1, r, 5);
+      const cell = ws.getCell(r, 1);
+      const text = `•  ${f.fileName}\n   →  Fichier ignoré : ${f.reason}`;
+      cell.value = text;
+      cell.font = VALUE_FONT;
+      cell.fill = EXCLU_FILL;
+      cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+      cell.border = THIN_BORDER;
+      const lines = estimateWrappedLines(text, 130);
+      ws.getRow(r).height = Math.max(18, lines * 14 + 4);
+      r += 1;
+    }
+  }
+
+  ws.getColumn(1).width = clampWidth(colMaxLen[0] + 3, 14, 40);
+  ws.getColumn(2).width = clampWidth(colMaxLen[1] + 3, 10, 30);
+  ws.getColumn(3).width = clampWidth(colMaxLen[2] + 3, 10, 24);
+  ws.getColumn(4).width = clampWidth(colMaxLen[3] + 3, 14, 30);
+  ws.getColumn(5).width = 50;
+
+  // Pas de volet fige sur le Resume : un bloc fige aussi grand que le titre + les
+  // statistiques + l'en-tete du tableau donnait l'impression que le contenu "se repete" a
+  // chaque defilement (rapporte par l'utilisateur) — meme cause de confusion que le Bug 3
+  // sur les onglets succursale, meme solution : ne rien figer plutot que de patcher un
+  // affichage ambigu.
+  ws.views = [{ showGridLines: false }];
+  ws.pageSetup = { ...PRINT_SETUP, orientation: 'portrait' };
+
+  return ws;
+}
+
+async function buildWorkbookV2(batchResult, meta = {}) {
+  const generatedAt = meta.generatedAt || new Date();
+  const version = meta.version || SOFTWARE_VERSION;
+
+  const groupedByBranch = groupByBranchAndSupplier(batchResult.allRows);
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Outil de changement de prix';
+  wb.created = generatedAt;
+
+  buildResumeSheet(wb, batchResult, groupedByBranch, { generatedAt, version });
+
+  for (const b of groupedByBranch) {
+    const ws = wb.addWorksheet(b.sheetName);
+    applySectionRows(ws, b.sections);
+  }
+
+  wb.views = [{ activeTab: 0 }];
+
+  return { wb, groupedByBranch };
+}
+
+// ==================== Table fournisseurs (éditable, persistée localStorage) ====================
+const DEFAULT_SUPPLIERS = {
+  "1": "Kimpex", "3": "BSL", "4": "Thibault", "5": "Motovan", "10": "Hypnose",
+  "12": "Velocity Group Sport (Bell)", "14": "Auclair", "16": "Choko (motoneige)", "17": "Wolf Canada",
+  "21": "Full Bore", "22": "Powersportrider", "24": "MSD", "26": "Gamma Sales",
+  "27": "Splash & Dirt", "28": "Parts Canada", "31": "Pro-Lab", "38": "Driwash",
+  "41": "Ryders", "43": "Vip Air", "45": "Louis Garneau", "46": "Angora (motoneige)",
+  "47": "Angora (motoneige)", "48": "Quick Silver", "54": "Ressurgence", "56": "Ganka",
+  "58": "Mike Grassetti", "62": "Acton", "65": "Oakley", "71": "Importation T.A.",
+  "77": "Bilodeau", "86": "Matrix", "89": "Foxhead", "112": "Qualipièces",
+  "115": "Troy Lee Design", "116": "Choko (moto)", "130": "Distribution D.S.G.",
+  "132": "Conforteck", "135": "Wes Industries", "138": "Baffin", "140": "FXR",
+  "165": "Forma", "168": "Gestion RAC", "188": "Ben3th", "189": "Atlas",
+  "190": "6D", "193": "Fasthouse",
+};
+const STORAGE_KEY = 'vmmx_suppliers_v1';
+
+function loadSuppliers() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { ...DEFAULT_SUPPLIERS };
+}
+function saveSuppliers(map) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+}
+
+let suppliers = loadSuppliers();
+
+function renderSupplierTable() {
+  const body = document.getElementById('suppBody');
+  body.innerHTML = '';
+  const codes = Object.keys(suppliers).sort((a, b) => parseInt(a) - parseInt(b));
+  for (const code of codes) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" data-code="${escapeHtml(code)}" class="code-input" value="${escapeHtml(code)}"></td>
+      <td><input type="text" data-code="${escapeHtml(code)}" class="name-input" value="${escapeHtml(suppliers[code])}"></td>
+      <td><button class="rowbtn" data-code="${escapeHtml(code)}">✕</button></td>`;
+    body.appendChild(tr);
+  }
+  body.querySelectorAll('.name-input').forEach(inp => {
+    inp.addEventListener('change', () => {
+      suppliers[inp.dataset.code] = inp.value.trim();
+      saveSuppliers(suppliers);
+    });
+  });
+  body.querySelectorAll('.code-input').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const oldCode = inp.dataset.code;
+      const newCode = String(parseInt(inp.value.trim(), 10));
+      if (!newCode || newCode === 'NaN') { inp.value = oldCode; return; }
+      const name = suppliers[oldCode];
+      delete suppliers[oldCode];
+      suppliers[newCode] = name;
+      saveSuppliers(suppliers);
+      renderSupplierTable();
+    });
+  });
+  body.querySelectorAll('.rowbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      delete suppliers[btn.dataset.code];
+      saveSuppliers(suppliers);
+      renderSupplierTable();
+    });
+  });
+}
+renderSupplierTable();
+
+document.getElementById('addSuppBtn').addEventListener('click', () => {
+  let n = 1;
+  while (suppliers[String(n)]) n++;
+  suppliers[String(n)] = 'Nouveau fournisseur';
+  saveSuppliers(suppliers);
+  renderSupplierTable();
+});
+document.getElementById('resetSuppBtn').addEventListener('click', () => {
+  if (!confirm('Réinitialiser la liste des fournisseurs à la valeur par défaut ? Vos modifications seront perdues.')) return;
+  suppliers = { ...DEFAULT_SUPPLIERS };
+  saveSuppliers(suppliers);
+  renderSupplierTable();
+});
+
+// ==================== Panneau fournisseurs : discret, protégé par code admin ====================
+// L'accès complet (ajout/modification/suppression/réinitialisation) n'est jamais persisté :
+// suppliersUnlocked n'existe qu'en mémoire JS pour la durée de la page. Un rechargement ou
+// une fermeture de l'onglet crée un nouveau contexte JS, ce qui réactive automatiquement la
+// protection — comme demandé. Ce n'est pas une sécurité informatique (l'outil tourne
+// entièrement dans le navigateur) : le but est simplement d'éviter une modification accidentelle.
+const ADMIN_CODE = '3366';
+let suppliersUnlocked = false;
+const suppSettingsBtn = document.getElementById('suppSettingsBtn');
+const suppPanel = document.getElementById('suppPanel');
+const suppLockView = document.getElementById('suppLockView');
+const suppUnlockedView = document.getElementById('suppUnlockedView');
+const suppCodeInput = document.getElementById('suppCodeInput');
+const suppCodeError = document.getElementById('suppCodeError');
+
+function refreshSuppView() {
+  if (suppliersUnlocked) {
+    suppLockView.style.display = 'none';
+    suppUnlockedView.style.display = 'block';
+  } else {
+    suppLockView.style.display = 'block';
+    suppUnlockedView.style.display = 'none';
+  }
+}
+
+suppSettingsBtn.addEventListener('click', () => {
+  const isOpen = suppPanel.style.display !== 'none';
+  if (isOpen) { suppPanel.style.display = 'none'; return; }
+  suppPanel.style.display = 'block';
+  refreshSuppView();
+  if (!suppliersUnlocked) suppCodeInput.focus();
+});
+
+function tryUnlockSuppliers() {
+  if (suppCodeInput.value.trim() === ADMIN_CODE) {
+    suppliersUnlocked = true;
+    suppCodeError.style.display = 'none';
+    suppCodeInput.value = '';
+    refreshSuppView();
+  } else {
+    suppCodeError.style.display = 'block';
+  }
+}
+document.getElementById('suppUnlockBtn').addEventListener('click', tryUnlockSuppliers);
+suppCodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlockSuppliers(); });
+
+// ==================== Gestion des fichiers ====================
+let selectedFiles = [];
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fileListEl = document.getElementById('fileList');
+const genBtn = document.getElementById('genBtn');
+const logEl = document.getElementById('log');
+const alertBox = document.getElementById('alertBox');
+
+function renderFileList() {
+  fileListEl.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'f';
+    div.innerHTML = `<span>📄 ${escapeHtml(f.name)}</span><button data-i="${i}">retirer</button>`;
+    fileListEl.appendChild(div);
+  });
+  fileListEl.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedFiles.splice(parseInt(btn.dataset.i, 10), 1);
+      renderFileList();
+      genBtn.disabled = selectedFiles.length === 0;
+    });
+  });
+  genBtn.disabled = selectedFiles.length === 0;
+}
+
+function addFiles(fileArr) {
+  // Tous les fichiers deposes sont acceptes ici, meme s'ils ne sont pas des PDF valides :
+  // filtrer silencieusement a cette etape cacherait un fichier problematique a l'utilisateur
+  // sans explication. La validation reelle (format, lisibilite, structure) se fait au moment
+  // de la generation, avec une raison precise affichee pour chaque anomalie (voir
+  // classifyAndProcessFile) — conformement au principe "avertir plutot que deviner".
+  for (const f of fileArr) {
+    const dup = selectedFiles.some(sf => sf.name === f.name && sf.size === f.size && sf.lastModified === f.lastModified);
+    if (!dup) selectedFiles.push(f);
+  }
+  renderFileList();
+}
+
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => addFiles([...e.target.files]));
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  addFiles([...e.dataTransfer.files]);
+});
+
+function log(msg) {
+  logEl.textContent += msg + '\n';
+}
+function showAlert(msg) {
+  alertBox.textContent = msg;
+  alertBox.style.display = 'block';
+}
+function hideAlert() {
+  alertBox.style.display = 'none';
+  alertBox.textContent = '';
+}
+
+// Declenche le telechargement d'un buffer (ArrayBuffer/Uint8Array) sous un nom donne, sans
+// jamais dependre d'une variable globale partagee entre plusieurs appels successifs.
+function triggerDownload(buffer, filename, mimeType) {
+  const blob = new Blob([buffer], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Charge JSZip depuis le CDN uniquement au moment ou elle est reellement necessaire (plusieurs
+// departements detectes dans le meme lot). Dans le cas le plus frequent (un seul departement),
+// cette bibliotheque n'est jamais telechargee : aucun cout ajoute au chemin le plus courant.
+let jsZipLoadPromise = null;
+function loadJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  if (jsZipLoadPromise) return jsZipLoadPromise;
+  jsZipLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    script.onload = () => resolve(window.JSZip);
+    script.onerror = () => reject(new Error("Impossible de charger la bibliothèque de compression (JSZip) — vérifiez votre connexion internet."));
+    document.head.appendChild(script);
+  });
+  return jsZipLoadPromise;
+}
+
+function renderMultiResults(split, generated, downloadedName) {
+  const deptCount = generated.length;
+  const deptNames = generated.map(g => departmentLabel(g.batch.department) || '—').join(', ');
+  const summaryEl = document.getElementById('resultSummary');
+  summaryEl.textContent = deptCount === 1
+    ? `1 département détecté (${deptNames}) → 1 fichier généré : ${downloadedName}`
+    : `${deptCount} départements détectés (${deptNames}) → ${deptCount} fichiers générés, regroupés dans "${downloadedName}".`;
+
+  const container = document.getElementById('departmentResults');
+  container.innerHTML = '';
+  for (const g of generated) {
+    const deptLabel = departmentLabel(g.batch.department) || '—';
+    const totalSuppliers = new Set(g.batch.allRows.map(r => r.code)).size;
+
+    const block = document.createElement('div');
+    block.className = 'dept-block';
+
+    let html = `<h3>${escapeHtml(deptLabel)} — ${escapeHtml(g.filename)}</h3>`;
+    html += `<div class="kv-grid">
+      <div class="k">Succursales</div><div>${g.batch.branches.length}</div>
+      <div class="k">PDF reçus / traités / ignorés</div><div>${g.batch.fileResults.length} / ${g.batch.okResults.length} / ${g.batch.excludedResults.length}</div>
+      <div class="k">Fournisseurs</div><div>${totalSuppliers}</div>
+      <div class="k">Changements retenus</div><div>${g.batch.allRows.length}</div>
+    </div>`;
+
+    html += '<table class="summary-table"><caption>Détail par succursale</caption><tr><th>Succursale</th><th>Fournisseurs</th><th>Changements retenus</th></tr>';
+    for (const b of g.groupedByBranch) {
+      html += `<tr><td>${escapeHtml(b.branch)}</td><td>${b.supplierCount}</td><td>${b.totalRows}</td></tr>`;
+    }
+    html += '</table>';
+
+    // Anomalies propres a ce departement (ex. succursale non detectee sur un fichier dont le
+    // departement etait tout de meme lisible) — en plus des anomalies globales plus bas.
+    if (g.batch.excludedResults.length) {
+      html += `<table class="summary-table"><tr><th colspan="2">Anomalies pour ce département (${g.batch.excludedResults.length})</th></tr><tr><th>Fichier</th><th>Raison</th></tr>`;
+      for (const f of g.batch.excludedResults) {
+        html += `<tr><td>${escapeHtml(f.fileName)}</td><td><span class="badge warn">${escapeHtml(f.reason)}</span></td></tr>`;
+      }
+      html += '</table>';
+    }
+
+    block.innerHTML = html;
+    container.appendChild(block);
+  }
+
+  // Anomalies globales : fichiers dont on n'a pu determiner aucun departement du tout (mauvais
+  // format, corrompu, structure non reconnue...) — n'appartiennent a aucun fichier Excel
+  // specifique, affichees une seule fois ici.
+  const excludedTable = document.getElementById('excludedTable');
+  if (split.globalExcluded.length) {
+    let eHtml = `<tr><th colspan="2">Anomalies non classables (${split.globalExcluded.length})</th></tr><tr><th>Fichier</th><th>Raison</th></tr>`;
+    for (const f of split.globalExcluded) {
+      eHtml += `<tr><td>${escapeHtml(f.fileName)}</td><td><span class="badge warn">${escapeHtml(f.reason)}</span></td></tr>`;
+    }
+    excludedTable.innerHTML = eHtml;
+    excludedTable.style.display = '';
+  } else {
+    excludedTable.innerHTML = '';
+    excludedTable.style.display = 'none';
+  }
+
+  document.getElementById('resultsCard').style.display = 'block';
+
+  // Une fois le Résumé affiché, le panneau fournisseurs (configuration, rarement utile à ce
+  // stade) s'efface complètement pour laisser toute la place aux résultats — il réapparaît
+  // dès qu'une nouvelle génération est lancée (voir plus bas).
+  suppPanel.style.display = 'none';
+  suppSettingsBtn.style.display = 'none';
+}
+
+// ==================== Génération ====================
+genBtn.addEventListener('click', async () => {
+  genBtn.disabled = true;
+  logEl.textContent = '';
+  hideAlert();
+  document.getElementById('resultsCard').style.display = 'none';
+  suppSettingsBtn.style.display = '';
+  log(`⏳ Traitement de ${selectedFiles.length} fichier(s)...`);
+
+  try {
+    const fileResults = [];
+    for (const file of selectedFiles) {
+      log(`  → Lecture de ${file.name}...`);
+      const result = await classifyAndProcessFile(file, suppliers);
+      fileResults.push(result);
+      if (result.status === 'ok') {
+        log(`    Succursale : ${result.branch} | Département : ${departmentLabel(result.department)} | ${result.rows.length} changement(s) retenu(s) sur ${result.stats.rawRows} ligne(s) lue(s).`);
+      } else {
+        log(`    ⚠️ Ignoré : ${result.reason}`);
+      }
+    }
+
+    const split = splitByDepartment(fileResults);
+
+    if (split.batches.length === 0) {
+      showAlert("❌ Aucun fichier n'a pu être traité (succursale ou département non détecté, PDF illisible, ou aucun changement de prix réel trouvé). Voir le détail par fichier ci-dessus.");
+      genBtn.disabled = false;
+      return;
+    }
+
+    log(`⏳ Génération de ${split.batches.length} fichier(s) Excel (${split.batches.length} département(s) détecté(s))...`);
+
+    const generated = [];
+    for (const batch of split.batches) {
+      const { wb, groupedByBranch } = await buildWorkbookV2(batch);
+      const buffer = await wb.xlsx.writeBuffer();
+      const filename = generateFileName(batch.department, batch.branches);
+      generated.push({ batch, groupedByBranch, buffer, filename });
+      log(`  → ${filename} (${batch.allRows.length} changement(s), ${batch.branches.length} succursale(s))`);
+    }
+
+    const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    let downloadedName;
+
+    if (generated.length === 1) {
+      downloadedName = generated[0].filename;
+      triggerDownload(generated[0].buffer, downloadedName, XLSX_MIME);
+    } else {
+      // Plusieurs departements : un seul ZIP plutot que plusieurs telechargements automatiques,
+      // que les navigateurs bloquent ou soumettent a confirmation au-dela d'un ou deux fichiers
+      // (voir analyse d'architecture) — un seul clic, un seul fichier, aucun risque de blocage.
+      log('⏳ Compression des fichiers dans une archive ZIP...');
+      const JSZipCtor = await loadJSZip();
+      const zip = new JSZipCtor();
+      for (const g of generated) zip.file(g.filename, g.buffer);
+      const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+      downloadedName = generateZipFileName(split.batches.flatMap(b => b.branches));
+      triggerDownload(zipBuffer, downloadedName, 'application/zip');
+    }
+
+    log(`✅ Téléchargement généré : ${downloadedName}`);
+    renderMultiResults(split, generated, downloadedName);
+  } catch (err) {
+    console.error(err);
+    log('❌ Erreur : ' + err.message);
+  }
+  genBtn.disabled = false;
+});
+</script>
+</body>
+</html>
