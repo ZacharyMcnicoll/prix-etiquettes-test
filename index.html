@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADM PriceFlow - Générateur Excel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root {
+    --ink: #1b1f27;
+    --muted: #5b6472;
+    --navy: #1F3864;
+    --blue: #2E75B6;
+    --blue-pale: #EAF2FD;
+    --border: #DFE4EB;
+    --bg: #F3F5F8;
+    --card-bg: #FFFFFF;
+    --row-a: #F7F9FC;
+    --row-b: #FFFFFF;
+    --green: #1a7a1a;
+    --red: #b3261e;
+    --red-pale: #FBEAEA;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+    background: var(--bg);
+    margin: 0;
+    padding: 28px 24px 48px;
+    color: var(--ink);
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  button, input { font-family: inherit; }
+  a { color: var(--blue); }
+  button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+  }
+
+  /* ---------- En-tete ---------- */
+  .appheader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 22px;
+    margin-bottom: 22px;
+  }
+  .appheader-brand { display: flex; align-items: center; gap: 18px; min-width: 0; }
+  .appheader-brand .logo { height: 26px; width: auto; display: block; flex-shrink: 0; }
+  .appheader-divider { width: 1px; align-self: stretch; background: var(--border); flex-shrink: 0; }
+  .appheader h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--navy);
+    margin: 0;
+    line-height: 1.25;
+  }
+  .appheader .subtitle { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+  /* ---------- Cartes ---------- */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 26px 28px;
+    margin-bottom: 22px;
+    box-shadow: 0 1px 2px rgba(20, 30, 50, 0.04);
+  }
+  .card h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy);
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px; color: #333; }
+
+  /* ---------- Zone de depot ---------- */
+  .dropzone {
+    border: 2px dashed #C3D2E6;
+    border-radius: 10px;
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--muted);
+    background: #FBFCFF;
+    transition: background .15s, border-color .15s;
+  }
+  .dropzone.dragover { background: var(--blue-pale); border-color: var(--blue); }
+  .dropzone input[type=file] { display: none; }
+  .dz-icon { margin-bottom: 10px; }
+  .dz-icon svg { display: block; margin: 0 auto; }
+  #dzText { font-size: 16px; font-weight: 600; color: var(--navy); }
+  .dz-or { font-size: 11px; color: #9aa4b2; margin: 12px 0; letter-spacing: 1.5px; font-weight: 600; }
+  button.btn-choose {
+    background: var(--card-bg);
+    border: 1.5px solid var(--blue);
+    color: var(--blue);
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 42px;
+  }
+  button.btn-choose:hover { background: var(--blue-pale); }
+
+  /* ---------- Etapes (remplace le long paragraphe) ---------- */
+  ul.steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 8px; }
+  ul.steps li {
+    font-size: 13px; color: var(--muted); padding-left: 22px; position: relative; line-height: 1.45;
+  }
+  ul.steps li::before {
+    content: "✓"; position: absolute; left: 0; top: 0; color: var(--blue); font-weight: 700;
+  }
+
+  /* ---------- Liste de fichiers (cartes) ---------- */
+  .filelist-header { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .filelist {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 10px;
+  }
+  .filelist .file-card {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: #F7F9FC;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-width: 0;
+  }
+  .filelist .file-card svg { flex-shrink: 0; }
+  .filelist .file-card-name {
+    flex: 1; min-width: 0; font-size: 13px; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .filelist .file-card button {
+    background: none; border: none; color: #9aa4b2; cursor: pointer; font-size: 15px;
+    font-weight: 700; line-height: 1; padding: 4px 6px; border-radius: 4px; flex-shrink: 0;
+  }
+  .filelist .file-card button:hover { color: var(--red); background: var(--red-pale); }
+
+  /* ---------- Boutons ---------- */
+  button.primary {
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 14px 26px;
+    border-radius: 8px;
+    font-size: 15.5px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 18px;
+    min-height: 46px;
+    letter-spacing: .2px;
+  }
+  button.primary:hover:not(:disabled) { background: #16294d; }
+  button.primary:disabled { background: #C4CCD8; color: #7c8593; cursor: not-allowed; }
+  button.secondary {
+    background: white;
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 34px;
+  }
+  button.secondary:hover { background: var(--blue-pale); }
+
+  /* ---------- Tableau fournisseurs ---------- */
+  table.supptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.supptable th { text-align: left; color: white; background: var(--navy); padding: 8px 10px; font-weight: 600; }
+  table.supptable td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  table.supptable input { width: 100%; border: 1px solid #ccc; border-radius: 5px; padding: 6px 8px; font-size: 13px; }
+  table.supptable tr:nth-child(even) td { background: #FAFBFD; }
+  .suppwrap { max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .rowbtn { color: var(--red); cursor: pointer; font-size: 13px; background: none; border: none; padding: 4px 8px; }
+  #log { font-size: 13px; color: var(--muted); margin-top: 14px; white-space: pre-wrap; }
+
+  /* ---------- Resultats : synthese (KPI) ---------- */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-tile {
+    background: #F7F9FC;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    text-align: left;
+  }
+  .stat-value { font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1.15; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+
+  .summary-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  .summary-table th, .summary-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  .summary-table th { background: var(--navy); color: white; font-weight: 600; }
+  .summary-table caption { text-align: left; font-weight: 700; color: var(--navy); padding: 12px 0 6px; font-size: 13px; }
+  .badge { display:inline-block; padding: 2px 9px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .badge.ok { background: #e3f3e3; color: var(--green); }
+  .badge.warn { background: var(--red-pale); color: var(--red); }
+  .alertbox {
+    display: none;
+    background: var(--red-pale);
+    border: 1px solid #f2b8b5;
+    color: #7a1a13;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 13px;
+    margin-top: 14px;
+  }
+  .kv-grid { display: grid; grid-template-columns: max-content 1fr; gap: 5px 18px; font-size: 13px; margin-top: 8px; }
+  .kv-grid div.k { font-weight: 600; color: #333; }
+  .dept-block { border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; background: #FBFCFE; }
+  .dept-block h3 { margin: 0 0 10px 0; font-size: 14.5px; font-weight: 600; color: var(--navy); }
+  .dept-block .summary-table { margin-top: 12px; }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; border: 2px solid #cdd;
+    border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite;
+    vertical-align: -2px; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .gearbtn {
+    background: white; border: 1px solid var(--border); color: var(--muted); padding: 9px 16px;
+    border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    flex-shrink: 0; min-height: 38px;
+  }
+  .gearbtn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-pale); }
+  input[type=text], input[type=password] {
+    padding: 9px 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+  }
+
+  @media (max-width: 860px) {
+    body { padding: 18px 14px 36px; }
+    .appheader { flex-direction: column; align-items: flex-start; }
+    .card { padding: 20px 18px; }
+    .kv-grid { grid-template-columns: 1fr 1fr; }
+    .filelist { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="appheader">
+    <div class="appheader-brand">
+      <img class="logo" src="data:image/webp;base64,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" alt="ADM PriceFlow" width="1655" height="220">
+      <div class="appheader-divider"></div>
+      <div>
+        <h1>ADM PriceFlow</h1>
+        <div class="subtitle">Générateur de fichiers Excel à partir des rapports PDF fournisseurs — tout se passe dans votre navigateur, rien n'est envoyé sur internet.</div>
+      </div>
+    </div>
+    <button class="gearbtn" id="suppSettingsBtn" type="button">⚙ Fournisseurs</button>
+  </header>
+
+  <div class="card" id="suppPanel" style="display:none;">
+    <div id="suppLockView">
+      <div class="hint" style="margin-bottom:10px;">Section de configuration — modification rarement nécessaire. Un code administrateur est requis.</div>
+      <label for="suppCodeInput">Code administrateur</label>
+      <input type="password" id="suppCodeInput" placeholder="••••" style="max-width:160px;">
+      <button class="secondary" id="suppUnlockBtn" style="margin-left:8px;">Déverrouiller</button>
+      <div class="hint" id="suppCodeError" style="display:none; color:#b3261e; margin-top:8px;">Code incorrect.</div>
+    </div>
+    <div id="suppUnlockedView" style="display:none;">
+      <div class="hint" style="margin-bottom:10px;">
+        Si un code fournisseur n'est pas dans cette liste, l'outil affichera "Fournisseur [code]" à la place du nom — le calcul des prix reste correct, seul l'étiquette de section change. Ajoutez ou corrigez des noms au besoin ; c'est sauvegardé automatiquement sur cet ordinateur.
+      </div>
+      <div class="suppwrap">
+        <table class="supptable" id="suppTable">
+          <thead><tr><th style="width:80px;">Code</th><th>Nom du fournisseur</th><th style="width:40px;"></th></tr></thead>
+          <tbody id="suppBody"></tbody>
+        </table>
+      </div>
+      <button class="secondary" id="addSuppBtn" style="margin-top:10px;">+ Ajouter un fournisseur</button>
+      <button class="secondary" id="resetSuppBtn" style="margin-top:10px;">Réinitialiser la liste par défaut</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="dropzone" id="dropzone">
+      <div class="dz-icon">
+        <svg width="60" height="60" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M14 4h20l8 8v40a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="#EAF2FD" stroke="#2E75B6" stroke-width="2"/>
+          <path d="M34 4v8h8" fill="none" stroke="#2E75B6" stroke-width="2" stroke-linejoin="round"/>
+          <rect x="15" y="30" width="18" height="10" rx="2" fill="#2E75B6"/>
+          <text x="24" y="37.5" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" fill="#fff" text-anchor="middle">PDF</text>
+        </svg>
+      </div>
+      <div id="dzText">Déposez vos PDF ici</div>
+      <div class="dz-or">OU</div>
+      <button type="button" class="btn-choose" id="chooseFilesBtn">Choisir des fichiers</button>
+      <input type="file" id="fileInput" accept="application/pdf" multiple>
+    </div>
+    <ul class="steps">
+      <li>Glissez-déposez ou cliquez sur « Choisir des fichiers » — répétez autant de fois que nécessaire, les fichiers s'ajoutent à la sélection.</li>
+      <li>Aucun traitement ne démarre avant votre clic sur « Générer les fichiers Excel ».</li>
+      <li>Un fichier invalide (mauvais format, téléchargement inachevé, etc.) est automatiquement ignoré et expliqué dans le résultat — les autres sont traités normalement.</li>
+    </ul>
+    <div class="filelist-header" id="fileListHeader" style="display:none;">
+      <span id="fileCount">Fichiers sélectionnés (0)</span>
+      <button type="button" class="secondary" id="clearFilesBtn">Vider la sélection</button>
+    </div>
+    <div class="filelist" id="fileList"></div>
+    <button class="primary" id="genBtn" disabled>Générer les fichiers Excel</button>
+    <div id="log"></div>
+    <div class="alertbox" id="alertBox"></div>
+  </div>
+
+  <div class="card" id="resultsCard" style="display:none;">
+    <h2>Résultat</h2>
+    <div class="hint" id="resultSummary" style="font-size:14px; color:#333; margin-bottom:14px;"></div>
+    <div class="stat-grid" id="statGrid"></div>
+    <div id="departmentResults"></div>
+    <table class="summary-table" id="excludedTable"></table>
+  </div>
+
+</div>
+
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+</script>
+<script type="module">
+
+const SOFTWARE_VERSION = 'V1';
+
+// ==================== Coeur du parsing (identique à la version validée) ====================
+const NUMERO_RE = /^(\d{2,3})-[A-Z0-9=./-]+$/;
+const DIVIDER_RE = /^=+$/;
+const PRICE_RE = /^\d+\.\d{2}$/;
+const CHAR_FIX = { '╔': 'É', '└': 'À', '╬': 'Î', '┬': 'Â' };
+const FORBIDDEN_DESC_WORDS = ["JKT","GLOVE","BOOTS","HELMET","PANT","CASQUE","VISIERE","COUVRE"];
+
+// Arrondi centralisé à 2 décimales pour toute valeur monétaire écrite dans le classeur Excel.
+// Utilisé partout où un prix (Ancien Prix, Nouveau Prix, Différence) est calculé ou stocké,
+// afin d'éviter que l'imprécision native des nombres à virgule flottante en JavaScript
+// (ex: 29.95 - 19.99 = 9.959999999999999) ne se retrouve dans la valeur interne du fichier
+// Excel généré. Number.EPSILON compense les cas limites de type Math.round(1.005 * 100).
+function round2(n) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function fixText(t) {
+  let out = '';
+  for (const ch of t) out += CHAR_FIX[ch] || ch;
+  return out;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function clusterRows(words, yTol = 5) {
+  const sorted = [...words].sort((a, b) => a.top - b.top);
+  const rows = [];
+  let current = [];
+  let anchor = null;
+  for (const w of sorted) {
+    if (anchor === null || Math.abs(w.top - anchor) <= yTol) {
+      current.push(w);
+      if (anchor === null) anchor = w.top;
+    } else {
+      rows.push(current);
+      current = [w];
+      anchor = w.top;
+    }
+  }
+  if (current.length) rows.push(current);
+  return rows;
+}
+
+function getColumnZones(words) {
+  const byTop = new Map();
+  for (const w of words) {
+    if (DIVIDER_RE.test(w.text)) {
+      const key = Math.round(w.top * 10) / 10;
+      if (!byTop.has(key)) byTop.set(key, []);
+      byTop.get(key).push([w.x0, w.x1]);
+    }
+  }
+  return [...byTop.entries()].sort((a, b) => a[0] - b[0])
+    .map(([top, segs]) => [top, segs.sort((a, b) => a[0] - b[0])]);
+}
+
+function assignColumn(x0, x1, zones) {
+  const center = (x0 + x1) / 2;
+  for (let i = 0; i < zones.length; i++) {
+    const [zx0, zx1] = zones[i];
+    if (center >= zx0 - 5 && center <= zx1 + 5) return i;
+  }
+  let bestI = null, bestD = null;
+  for (let i = 0; i < zones.length; i++) {
+    const [zx0, zx1] = zones[i];
+    const zc = (zx0 + zx1) / 2;
+    const d = Math.abs(center - zc);
+    if (bestD === null || d < bestD) { bestD = d; bestI = i; }
+  }
+  return bestI;
+}
+
+function parsePdfPages(pages) {
+  const rowsOut = [];
+  const excluded = [];
+  for (let pi = 0; pi < pages.length; pi++) {
+    const rawWords = pages[pi].words.map(w => ({ ...w, text: fixText(w.text) }));
+    const zoneInfo = getColumnZones(rawWords);
+    if (!zoneInfo.length) continue;
+    const [headerTop, colZones] = zoneInfo[0];
+    if (colZones.length < 5) continue;
+    const footerTop = zoneInfo.length > 1 ? zoneInfo[zoneInfo.length - 1][0] : null;
+    const dataWords = rawWords.filter(w => w.top > headerTop + 3 && (footerTop === null || w.top < footerTop - 1));
+    const rows = clusterRows(dataWords, 5);
+
+    const NUM_I = 0, DESC_I = 1, EN_I = 2, DET_I = 4, NEW_I = 5;
+    let current = null;
+    const flush = () => { if (current) rowsOut.push(current); current = null; };
+
+    for (const rowWords of rows) {
+      const sortedRow = [...rowWords].sort((a, b) => a.x0 - b.x0);
+      const cols = new Map();
+      for (const w of sortedRow) {
+        const idx = assignColumn(w.x0, w.x1, colZones);
+        if (!cols.has(idx)) cols.set(idx, []);
+        cols.get(idx).push(w);
+      }
+      const grab = (idx, sep) => (cols.get(idx) || []).sort((a, b) => a.x0 - b.x0).map(w => w.text).join(sep);
+      const numeroText = grab(NUM_I, '');
+      const descText = grab(DESC_I, ' ');
+      const enText = grab(EN_I, '');
+      const detText = grab(DET_I, '');
+      const newText = grab(NEW_I, '');
+      const isNewProduct = NUMERO_RE.test(numeroText);
+
+      if (isNewProduct) {
+        flush();
+        current = { numero: numeroText, desc: descText ? [descText] : [], enmainRaw: enText, detailRaw: detText, nouveauRaw: newText, page: pi };
+      } else if (numeroText === '' && descText && !enText && !detText && !newText) {
+        if (current) current.desc.push(descText);
+      } else if (numeroText === '' && !descText && !enText && !detText && !newText) {
+        continue;
+      } else {
+        excluded.push({ reason: 'numero_invalide_ou_decalage', numero: numeroText, desc: descText, page: pi });
+      }
+    }
+    flush();
+  }
+  return { rows: rowsOut, excluded };
+}
+
+function validateAndBuild(rawRows, supplierLookup) {
+  const valid = [];
+  const excluded = [];
+  for (const r of rawRows) {
+    const numero = r.numero;
+    const desc = r.desc.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    const reasons = [];
+    if (!NUMERO_RE.test(numero)) reasons.push('numero_regex_fail');
+    if (FORBIDDEN_DESC_WORDS.some(fw => numero.includes(fw))) reasons.push('numero_contains_description_word');
+
+    const enRaw = r.enmainRaw.trim().replace(/,/g, '');
+    let enVal = null;
+    if (enRaw === '') enVal = 0;
+    else if (/^\d+$/.test(enRaw)) enVal = parseInt(enRaw, 10);
+    else reasons.push('enmain_not_numeric');
+
+    const detRaw = r.detailRaw.trim().replace(/,/g, '');
+    const newRaw = r.nouveauRaw.trim().replace(/,/g, '');
+    let detVal = null, newVal = null;
+    if (PRICE_RE.test(detRaw)) detVal = round2(parseFloat(detRaw)); else reasons.push('ancien_prix_not_numeric');
+    if (PRICE_RE.test(newRaw)) newVal = round2(parseFloat(newRaw)); else reasons.push('nouveau_prix_not_numeric');
+
+    if (reasons.length) { excluded.push({ numero, desc, reasons, page: r.page }); continue; }
+    if (enVal <= 0) { excluded.push({ numero, desc, reasons: ['enmain_not_positive'], page: r.page }); continue; }
+
+    const storeOld = round2(Math.floor(detVal) + 0.99);
+    const storeNew = round2(Math.floor(newVal) + 0.99);
+    if (round2(storeOld - storeNew) === 0) {
+      excluded.push({ numero, desc, reasons: ['no_real_store_price_change'], page: r.page });
+      continue;
+    }
+
+    const codeMatch = numero.match(NUMERO_RE);
+    const code = codeMatch[1];
+    const codeKey = String(parseInt(code, 10));
+    const supplier = (supplierLookup && supplierLookup[codeKey]) || `Fournisseur ${code}`;
+
+    valid.push({ numero, desc, enMain: enVal, ancien: detVal, nouveau: newVal, diff: round2(newVal - detVal), code, supplier });
+  }
+  return { valid, excluded };
+}
+
+// ==================== Détection succursale / département (en-tête PDF) ====================
+function detectMetadata(firstPageWords) {
+  const headerWords = firstPageWords
+    .filter(w => w.top < 65)
+    .sort((a, b) => (a.top - b.top) || (a.x0 - b.x0));
+
+  const sportIdx = headerWords.findIndex(w => w.text === 'SPORT');
+  let branch = null;
+  if (sportIdx !== -1) {
+    const sportTop = headerWords[sportIdx].top;
+    const rest = headerWords.slice(sportIdx + 1).filter(w => Math.abs(w.top - sportTop) < 3);
+    const branchWords = [];
+    for (const w of rest) {
+      if (w.text === 'Page:') break;
+      branchWords.push(w.text);
+    }
+    branch = branchWords.join(' ').trim() || null;
+  }
+
+  const slashIdx = headerWords.findIndex(w => w.text === '/');
+  let department = null;
+  if (slashIdx !== -1) {
+    const slashTop = headerWords[slashIdx].top;
+    const rest = headerWords.slice(slashIdx + 1).filter(w => Math.abs(w.top - slashTop) < 3);
+    department = rest.map(w => w.text).join(' ').trim() || null;
+  }
+
+  return { branch, department };
+}
+
+const DEPARTMENT_LABELS = { 'PIECES': 'Pièces', 'VETEMENTS': 'Vêtements', 'MODE': 'Mode' };
+function departmentLabel(rawDepartment) {
+  if (!rawDepartment) return null;
+  const key = rawDepartment.toUpperCase().trim();
+  return DEPARTMENT_LABELS[key] || rawDepartment;
+}
+
+function sanitizeSheetName(name, usedNames) {
+  let clean = String(name || 'Succursale').replace(/[\\/?*[\]:]/g, ' ').replace(/\s+/g, ' ').trim();
+  clean = clean.replace(/^'+/, '').replace(/'+$/, '').trim();
+  if (!clean) clean = 'Succursale';
+  if (clean.length > 31) clean = clean.slice(0, 31).trim();
+  let candidate = clean;
+  let n = 2;
+  while (usedNames.has(candidate.toUpperCase())) {
+    const suffix = ` (${n})`;
+    candidate = clean.slice(0, 31 - suffix.length) + suffix;
+    n += 1;
+  }
+  usedNames.add(candidate.toUpperCase());
+  return candidate;
+}
+
+// ==================== Portail de validation du lot (multi-fichiers, multi-succursales) ====================
+// Forme commune a tous les resultats de fichier "ignore", quelle que soit la raison —
+// utilisee par processFile ci-dessous et par les controles de format en amont (voir
+// classifyAndProcessFile plus bas) pour que processBatch n'ait jamais a distinguer leur origine.
+function excludedResult(fileName, status, reason) {
+  return {
+    fileName, status, reason,
+    branch: null, department: null, rows: [],
+    stats: { rawRows: 0, validRows: 0, excludedRows: 0 },
+  };
+}
+
+function processFile(fileName, pages, supplierLookup) {
+  if (!pages || pages.length === 0) {
+    return excludedResult(fileName, 'excluded_error', 'PDF vide ou illisible (aucune page extraite).');
+  }
+
+  let meta;
+  try {
+    meta = detectMetadata(pages[0].words);
+  } catch (e) {
+    meta = { branch: null, department: null };
+  }
+
+  const { rows: rawRows } = parsePdfPages(pages);
+
+  // Un PDF lisible mais dont la structure en colonnes attendue (diviseurs "====", 6 zones)
+  // est introuvable n'est probablement pas un rapport de variation de prix — plutot que de
+  // continuer et produire un resultat vide silencieusement, on le signale explicitement.
+  if (rawRows.length === 0) {
+    return excludedResult(fileName, 'excluded_not_recognized',
+      "Ce PDF ne semble pas être un rapport de variation de prix reconnu (structure de colonnes introuvable).");
+  }
+
+  const { valid, excluded } = validateAndBuild(rawRows, supplierLookup);
+
+  if (!meta.branch) {
+    const res = excludedResult(fileName, 'excluded_no_branch', "Succursale non détectée dans l'en-tête du PDF.");
+    res.department = meta.department;
+    res.stats = { rawRows: rawRows.length, validRows: valid.length, excludedRows: excluded.length };
+    return res;
+  }
+
+  if (!meta.department) {
+    const res = excludedResult(fileName, 'excluded_no_department', "Département non détecté dans l'en-tête du PDF.");
+    res.branch = meta.branch;
+    res.stats = { rawRows: rawRows.length, validRows: valid.length, excludedRows: excluded.length };
+    return res;
+  }
+
+  const taggedRows = valid.map(r => ({ ...r, branch: meta.branch, department: meta.department, sourceFile: fileName }));
+
+  return {
+    fileName, status: 'ok', reason: null,
+    branch: meta.branch, department: meta.department, rows: taggedRows,
+    stats: { rawRows: rawRows.length, validRows: valid.length, excludedRows: excluded.length },
+  };
+}
+
+// Partitionne le lot par departement au lieu d'avorter des qu'il y en a plusieurs : chaque
+// departement detecte parmi les fichiers traites avec succes devient un "sous-lot" independant
+// (memes champs qu'avant : department, branches, allRows, fileResults/okResults/excludedResults),
+// pret a etre passe a buildWorkbookV2 individuellement. Un fichier exclu dont le departement a
+// tout de meme pu etre determine (ex. succursale non detectee mais departement lisible) est
+// rattache au sous-lot de CE departement, pour apparaitre dans son Resume. Un fichier totalement
+// inclassable (aucun departement determinable) va dans "globalExcluded", jamais dans un fichier
+// Excel specifique puisqu'il n'appartient a aucun departement en particulier.
+function splitByDepartment(fileResults) {
+  const okResults = fileResults.filter(r => r.status === 'ok');
+  const excludedResults = fileResults.filter(r => r.status !== 'ok');
+
+  const departments = [...new Set(okResults.map(r => r.department))].sort((a, b) => {
+    const la = departmentLabel(a) || a; const lb = departmentLabel(b) || b;
+    return String(la).localeCompare(String(lb), 'fr');
+  });
+
+  const batches = departments.map(dept => {
+    const deptOk = okResults.filter(r => r.department === dept);
+    const deptExcluded = excludedResults.filter(r => r.department === dept);
+    const allRows = deptOk.flatMap(r => r.rows);
+    const branches = [...new Set(allRows.map(r => r.branch))];
+    return {
+      department: dept,
+      branches,
+      allRows,
+      fileResults: [...deptOk, ...deptExcluded],
+      okResults: deptOk,
+      excludedResults: deptExcluded,
+      otherDepartments: departments.filter(d => d !== dept),
+    };
+  });
+
+  const globalExcluded = excludedResults.filter(r => !r.department);
+
+  return { batches, globalExcluded, fileResults, okResults, excludedResults };
+}
+
+// ==================== Regroupement à deux niveaux (succursale → fournisseur) ====================
+function groupBySupplier(validRows) {
+  const byCode = new Map();
+  for (const r of validRows) {
+    if (!byCode.has(r.code)) byCode.set(r.code, { supplier: r.supplier, code: parseInt(r.code, 10), rows: [] });
+    byCode.get(r.code).rows.push(r);
+  }
+  const sections = [...byCode.values()];
+  sections.sort((a, b) => a.code - b.code);
+  for (const s of sections) s.rows.sort((a, b) => a.numero.localeCompare(b.numero));
+  return sections;
+}
+
+function groupByBranchAndSupplier(allRows) {
+  const byBranch = new Map();
+  for (const r of allRows) {
+    const branch = r.branch || 'Succursale inconnue';
+    if (!byBranch.has(branch)) byBranch.set(branch, []);
+    byBranch.get(branch).push(r);
+  }
+
+  const branchNames = [...byBranch.keys()].sort((a, b) => a.localeCompare(b, 'fr'));
+  const usedSheetNames = new Set();
+
+  return branchNames.map(branch => {
+    const rows = byBranch.get(branch);
+    const sections = groupBySupplier(rows);
+    return {
+      branch,
+      sheetName: sanitizeSheetName(branch, usedSheetNames),
+      sections,
+      totalRows: rows.length,
+      supplierCount: sections.length,
+    };
+  });
+}
+
+// ==================== Nom de fichier dynamique ====================
+function titleCase(text) {
+  return String(text)
+    .toLowerCase()
+    .replace(/(^|[\s-])([a-zàâäéèêëïîôöùûüç])/g, (m, sep, ch) => sep + ch.toUpperCase());
+}
+function sanitizeFileNamePart(text) {
+  return String(text).replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function generateFileName(department, branches) {
+  const deptLabel = sanitizeFileNamePart(departmentLabel(department) || 'Departement inconnu');
+  const uniqueBranches = [...new Set(branches)].filter(Boolean);
+  if (uniqueBranches.length === 1) {
+    const branch = sanitizeFileNamePart(titleCase(uniqueBranches[0]));
+    return `Changement de prix - ${branch} - ${deptLabel}.xlsx`;
+  }
+  return `Changements de prix - Toutes les succursales - ${deptLabel}.xlsx`;
+}
+
+// Nom de l'archive ZIP quand plusieurs departements sont generes en une seule fois.
+function generateZipFileName(allBranches) {
+  const uniqueBranches = [...new Set(allBranches)].filter(Boolean);
+  if (uniqueBranches.length === 1) {
+    const branch = sanitizeFileNamePart(titleCase(uniqueBranches[0]));
+    return `Changements de prix - ${branch}.zip`;
+  }
+  return `Changements de prix - Toutes les succursales.zip`;
+}
+
+// ==================== Extraction PDF (pdf.js) ====================
+async function extractPagesFromFile(file) {
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const pages = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const viewport = page.getViewport({ scale: 1 });
+    const content = await page.getTextContent();
+    const words = content.items
+      .filter(it => it.str.trim() !== '')
+      .map(it => ({ text: it.str, x0: it.transform[4], x1: it.transform[4] + it.width, top: viewport.height - it.transform[5] }));
+    pages.push({ words });
+  }
+  return pages;
+}
+
+// ==================== Validation robuste des fichiers importés ====================
+// Un fichier problematique (mauvais format, telechargement inacheve, PDF protege ou
+// corrompu...) ne doit jamais bloquer le traitement des autres fichiers du lot, et sa
+// raison d'exclusion precise doit toujours etre visible plutot que devinee ou cachee.
+const INCOMPLETE_DOWNLOAD_SUFFIXES = ['.crdownload', '.part', '.partial', '.download', '.tmp'];
+
+function hasIncompleteDownloadSuffix(name) {
+  const lower = String(name || '').toLowerCase();
+  return INCOMPLETE_DOWNLOAD_SUFFIXES.some(suf => lower.endsWith(suf));
+}
+
+async function readMagicBytes(file, n) {
+  const buf = await file.slice(0, n).arrayBuffer();
+  return new Uint8Array(buf);
+}
+
+// Signature PDF standard : les fichiers PDF commencent toujours par les octets "%PDF-".
+// Verifier ces 5 octets est un test fiable et quasi instantane (aucune lecture complete du
+// fichier n'est necessaire) pour distinguer un vrai PDF d'un fichier renomme ou d'un autre
+// format, avant meme de tenter une analyse complete avec pdf.js.
+function looksLikePdfMagic(bytes) {
+  const sig = [0x25, 0x50, 0x44, 0x46, 0x2d]; // % P D F -
+  if (!bytes || bytes.length < sig.length) return false;
+  return sig.every((b, i) => bytes[i] === b);
+}
+
+async function classifyAndProcessFile(file, supplierLookup) {
+  if (hasIncompleteDownloadSuffix(file.name)) {
+    return excludedResult(file.name, 'excluded_incomplete_download',
+      "Téléchargement incomplet (fichier temporaire de navigateur, ex. .crdownload) — le téléchargement n'est probablement pas terminé.");
+  }
+
+  let magicOk = false;
+  try {
+    magicOk = looksLikePdfMagic(await readMagicBytes(file, 5));
+  } catch (e) {
+    magicOk = false;
+  }
+  if (!magicOk) {
+    return excludedResult(file.name, 'excluded_not_pdf', "Format non reconnu : ce fichier n'est pas un PDF valide.");
+  }
+
+  let pages;
+  try {
+    pages = await extractPagesFromFile(file);
+  } catch (e) {
+    const name = e && e.name;
+    if (name === 'PasswordException') {
+      return excludedResult(file.name, 'excluded_password', "PDF protégé par un mot de passe — impossible de l'ouvrir automatiquement.");
+    }
+    if (name === 'InvalidPDFException') {
+      return excludedResult(file.name, 'excluded_corrupt', "PDF corrompu ou endommagé — impossible de le lire.");
+    }
+    return excludedResult(file.name, 'excluded_error', `PDF illisible (${e && e.message ? e.message : 'erreur inconnue'}).`);
+  }
+
+  return processFile(file.name, pages, supplierLookup);
+}
+
+// ==================== Génération Excel (ExcelJS) — classeur multi-onglets + Résumé ====================
+const MONEY_FMT = '#,##0.00" $"';
+const DIFF_FMT = '+#,##0.00" $";-#,##0.00" $"';
+const BANNER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E75B6' } };
+const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
+const ROW_FILL_A = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+const ROW_FILL_B = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF0FA' } };
+const BANNER_FONT = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+const HEADER_FONT = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+const DATA_FONT = { name: 'Arial', size: 10 };
+const GREEN_FONT = { name: 'Arial', size: 10, color: { argb: 'FF006100' } };
+const RED_FONT = { name: 'Arial', size: 10, color: { argb: 'FF9C0006' } };
+const CENTER = { horizontal: 'center', vertical: 'middle' };
+const LEFT_WRAP = { horizontal: 'left', vertical: 'middle', wrapText: true };
+const CENTER_WRAP = { horizontal: 'center', vertical: 'middle', wrapText: true };
+const COLS = ['N° Produit', 'Description', 'En Main', 'Ancien Prix', 'Nouveau Prix', 'Différence'];
+const PRINT_SETUP = {
+  orientation: 'landscape',
+  fitToPage: true,
+  fitToWidth: 1,
+  fitToHeight: 0,
+  margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
+};
+
+function applySectionRows(ws, sections) {
+  let r = 1, lastDataRow = null, alt = 0;
+  const sectionRanges = [];
+  let isFirstSection = true;
+
+  for (const section of sections) {
+    if (!section.rows.length) continue;
+
+    // Saut de page avant chaque nouveau fournisseur (sauf le tout premier) : un changement
+    // de fournisseur ne doit jamais se produire au milieu d'une page imprimée. On insere un
+    // saut de page manuel juste apres la derniere ligne de la section precedente ; si un
+    // fournisseur occupe plusieurs pages, il continue naturellement sur les pages suivantes
+    // puisque seul le DEBUT de chaque nouvelle section force un saut.
+    if (!isFirstSection && lastDataRow) {
+      ws.getRow(lastDataRow).addPageBreak();
+    }
+    isFirstSection = false;
+
+    ws.mergeCells(r, 1, r, COLS.length);
+    const bannerCell = ws.getCell(r, 1);
+    // Format "{code} - {nom fournisseur}" (ex: "01 - Kimpex") : le code fournisseur, utilisé
+    // sur les étiquettes/bons de livraison, doit toujours être visible d'un coup d'œil.
+    const codeStr = String(section.code).padStart(2, '0');
+    bannerCell.value = `${codeStr} - ${section.supplier}`;
+    bannerCell.alignment = CENTER;
+    for (let c = 1; c <= COLS.length; c++) {
+      const cell = ws.getCell(r, c);
+      cell.fill = BANNER_FILL;
+      cell.font = BANNER_FONT;
+    }
+    ws.getRow(r).height = 24;
+    r += 1;
+
+    COLS.forEach((name, i) => {
+      const cell = ws.getCell(r, i + 1);
+      cell.value = name;
+      cell.fill = HEADER_FILL;
+      cell.font = HEADER_FONT;
+      cell.alignment = CENTER;
+    });
+    r += 1;
+
+    const sectionStart = r;
+    for (const row of section.rows) {
+      alt += 1;
+      const fill = (alt % 2) ? ROW_FILL_A : ROW_FILL_B;
+      const dRow = r;
+      const c1 = ws.getCell(r, 1); c1.value = row.numero;
+      const c2 = ws.getCell(r, 2); c2.value = row.desc;
+      const c3 = ws.getCell(r, 3); c3.value = row.enMain;
+      const c4 = ws.getCell(r, 4); c4.value = row.ancien;
+      const c5 = ws.getCell(r, 5); c5.value = row.nouveau;
+      const c6 = ws.getCell(r, 6);
+      c6.value = { formula: `ROUND(E${dRow}-D${dRow},2)`, result: round2(row.nouveau - row.ancien) };
+      c1.alignment = CENTER_WRAP; c2.alignment = LEFT_WRAP; c3.alignment = CENTER; c4.alignment = CENTER; c5.alignment = CENTER; c6.alignment = CENTER;
+      c4.numFmt = MONEY_FMT; c5.numFmt = MONEY_FMT; c6.numFmt = DIFF_FMT;
+      for (const cc of [c1, c2, c3, c4, c5, c6]) { cc.font = DATA_FONT; cc.fill = fill; }
+      lastDataRow = r;
+      r += 1;
+    }
+    sectionRanges.push([sectionStart, r - 1]);
+  }
+
+  ws.getColumn(1).width = 16; ws.getColumn(2).width = 42; ws.getColumn(3).width = 10;
+  ws.getColumn(4).width = 14; ws.getColumn(5).width = 14; ws.getColumn(6).width = 14;
+
+  for (const [start, end] of sectionRanges) {
+    ws.addConditionalFormatting({
+      ref: `F${start}:F${end}`,
+      rules: [
+        { type: 'cellIs', operator: 'greaterThan', formulae: ['0'], priority: 1, style: { font: GREEN_FONT } },
+        { type: 'cellIs', operator: 'lessThan', formulae: ['0'], priority: 2, style: { font: RED_FONT } },
+      ],
+    });
+  }
+
+  // Pas d'autoFilter en V2 : un tri/filtre Excel sur une plage contenant plusieurs bannières
+  // fusionnées les réordonne indépendamment des données et les découple (bug confirmé en usage
+  // réel). Le document est avant tout destiné à l'impression : on privilégie une mise en page
+  // fixe et fiable plutôt que le tri/filtre.
+  //
+  // Pas de volet figé (Freeze Panes) non plus : chaque section a sa propre bannière fournisseur,
+  // donc figer la ligne 1 gardait affichée en permanence la bannière du TOUT PREMIER fournisseur
+  // même en défilant jusqu'à la dernière section (bug rapporté : "28 - Parts Canada" visible en
+  // bas de page alors que "04 - Thibault" restait affiché en haut). Excel ne permet pas de figer
+  // "la bannière de la section courante" dynamiquement — la seule option fiable est de ne rien
+  // figer du tout, pour ne jamais donner une information trompeuse pendant la navigation.
+  ws.views = [{ showGridLines: false }];
+  ws.pageSetup = { ...PRINT_SETUP };
+  if (lastDataRow) ws.pageSetup.printArea = `A1:F${lastDataRow}`;
+
+  return { lastDataRow };
+}
+
+// Estimation simple du nombre de lignes qu'occupera un texte avec retour a la ligne
+// automatique dans une colonne d'une largeur donnee (en nombre de caracteres). Sert
+// uniquement a calculer une hauteur de ligne suffisante pour eviter qu'une cellule a
+// texte multi-lignes chevauche visuellement la ligne suivante (c'etait la cause du
+// "Bug 1" rapporte : le contenu semblait duplique alors qu'il etait en realite coupe/
+// chevauchant faute de hauteur de ligne adequate — aucun contenu n'etait ecrit deux fois).
+function estimateWrappedLines(text, charsPerLine) {
+  if (!text) return 1;
+  let total = 0;
+  for (const line of String(text).split('\n')) {
+    total += Math.max(1, Math.ceil(line.length / charsPerLine));
+  }
+  return total;
+}
+
+// Formatage manuel de la date/heure (plutot que toLocaleDateString/toLocaleTimeString) :
+// le rendu de Intl.DateTimeFormat pour la locale 'fr-CA' varie selon le moteur JS du
+// navigateur (heure non zero-remplie dans certains cas, ex. "1 h 00 min 06 s" au lieu de
+// "01 h 00 min 06 s" -- facilement confondu avec un "l" en Arial). Un formatage manuel avec
+// zero-remplissage explicite est independant du navigateur et donc plus fiable.
+function pad2(n) { return String(n).padStart(2, '0'); }
+function formatDateFr(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function formatTimeFr(d) { return `${pad2(d.getHours())} h ${pad2(d.getMinutes())} min ${pad2(d.getSeconds())} s`; }
+
+const THIN_BORDER_STYLE = { style: 'thin', color: { argb: 'FFC3CFE3' } };
+const THIN_BORDER = { top: THIN_BORDER_STYLE, left: THIN_BORDER_STYLE, bottom: THIN_BORDER_STYLE, right: THIN_BORDER_STYLE };
+
+function clampWidth(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+function buildResumeSheet(wb, batchResult, groupedByBranch, meta) {
+  const ws = wb.addWorksheet('Résumé', { properties: { tabColor: { argb: 'FF2E75B6' } } });
+
+  const TITLE_FONT = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF1F3864' } };
+  const SUBTITLE_FONT = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF1F3864' } };
+  const WARN_TITLE_FONT = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFB3261E' } };
+  const LABEL_FONT = { name: 'Arial', size: 10, bold: true };
+  const VALUE_FONT = { name: 'Arial', size: 10 };
+  const STAT_VALUE_FONT = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1F3864' } };
+  const TABLE_HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
+  const TABLE_HEADER_FONT = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+  const OK_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9F2D9' } };
+  const EXCLU_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2D9D9' } };
+  const WARN_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCEFD0' } };
+
+  // Suit la longueur maximale de texte reellement ecrite dans les colonnes 1 a 4 (non
+  // enroulees) afin de calculer leur largeur automatiquement a la fin — plutot que des
+  // largeurs fixes devinees a l'avance, qui tronquaient visuellement certains contenus
+  // (ex. l'heure "01 h 05 min 06 s" dans une colonne de largeur 12). La colonne 5
+  // ("Détails" / listes de fichiers) reste a largeur fixe car son texte est enroulé
+  // (wrapText) sur plusieurs lignes par design.
+  const colMaxLen = [0, 0, 0, 0];
+  function trackWidth(col, text) {
+    const len = String(text ?? '').length;
+    if (len > colMaxLen[col - 1]) colMaxLen[col - 1] = len;
+  }
+
+  let r = 1;
+  ws.mergeCells(r, 1, r, 5);
+  ws.getCell(r, 1).value = 'Changement de prix — Résumé de génération';
+  ws.getCell(r, 1).font = TITLE_FONT;
+  ws.getRow(r).height = 26;
+  r += 2;
+
+  const deptLabel = departmentLabel(batchResult.department) || '—';
+
+  // Lorsque le lot depose contenait plusieurs departements, chacun est genere dans son propre
+  // fichier (voir splitByDepartment) : ce bandeau evite qu'un fichier ouvert isolement laisse
+  // croire a tort qu'il couvre TOUT ce qui a ete depose.
+  if (batchResult.otherDepartments && batchResult.otherDepartments.length) {
+    const otherLabels = batchResult.otherDepartments.map(d => departmentLabel(d) || d).join(', ');
+    ws.mergeCells(r, 1, r, 5);
+    const noteCell = ws.getCell(r, 1);
+    noteCell.value = `ℹ️  Ce fichier ne couvre que le département ${deptLabel}. ${batchResult.otherDepartments.length} autre(s) département(s) détecté(s) dans le même lot ont été générés séparément : ${otherLabels}.`;
+    noteCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF1F3864' } };
+    noteCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF2FD' } };
+    noteCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 };
+    noteCell.border = THIN_BORDER;
+    const noteLines = estimateWrappedLines(noteCell.value, 130);
+    ws.getRow(r).height = Math.max(18, noteLines * 14 + 6);
+    r += 2;
+  }
+
+  const totalSuppliers = new Set(batchResult.allRows.map(row => row.code)).size;
+  const totalChanges = batchResult.allRows.length;
+  const totalReceived = batchResult.fileResults.length;
+  const totalProcessed = batchResult.okResults.length;
+  const totalIgnored = batchResult.excludedResults.length;
+
+  // Bilan lignes-produits (et non plus seulement fichiers) pour ce departement : combien de
+  // lignes-produits ont ete lues au total dans les PDF traites avec succes, combien ont ete
+  // retenues (= dans l'Excel), et combien ignorees (calcule par soustraction, comme demande).
+  // N'utilise que des donnees deja calculees ailleurs (stats.rawRows par fichier, deja
+  // produites par processFile/validateAndBuild) : aucune logique de traitement ou de
+  // validation n'est modifiee, ceci n'est qu'un affichage agrege supplementaire.
+  const totalRawRows = batchResult.okResults.reduce((sum, f) => sum + (f.stats ? f.stats.rawRows : 0), 0);
+  const totalRetainedRows = totalChanges;
+  const totalIgnoredRows = totalRawRows - totalRetainedRows;
+
+  // ---- Bloc statistiques : tableau borde a 2 colonnes (voir clampWidth / trackWidth plus
+  // haut pour la largeur automatique), incluant desormais un veritable bilan de traitement
+  // (PDF reçus / traités / ignorés) pour que l'acheteur confirme immediatement que tous les
+  // fichiers deposes ont bien ete pris en compte.
+  ws.getCell(r, 1).value = 'Statistiques de génération';
+  ws.getCell(r, 1).font = SUBTITLE_FONT;
+  r += 1;
+
+  ws.getCell(r, 1).value = 'Indicateur';
+  ws.getCell(r, 2).value = 'Valeur';
+  trackWidth(1, 'Indicateur'); trackWidth(2, 'Valeur');
+  for (let c = 1; c <= 2; c++) {
+    const cell = ws.getCell(r, c);
+    cell.fill = TABLE_HEADER_FILL;
+    cell.font = TABLE_HEADER_FONT;
+    cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle', indent: 1 } : CENTER;
+    cell.border = THIN_BORDER;
+  }
+  ws.getRow(r).height = 18;
+  r += 1;
+
+  const kv = [
+    ['Date de génération', formatDateFr(meta.generatedAt)],
+    ['Heure de génération', formatTimeFr(meta.generatedAt)],
+    ['Version du logiciel', meta.version],
+    ['Département détecté', deptLabel],
+    ['Nombre de succursales détectées', String(groupedByBranch.length)],
+    ['PDF reçus', String(totalReceived)],
+    ['PDF traités', String(totalProcessed)],
+    ['PDF ignorés', String(totalIgnored)],
+    ['Lignes totales lues', String(totalRawRows)],
+    ['Lignes retenues', String(totalRetainedRows)],
+    ['Lignes ignorées', String(totalIgnoredRows)],
+    ['Total de fournisseurs détectés', String(totalSuppliers)],
+    ['Total de changements retenus', String(totalChanges)],
+  ];
+  kv.forEach(([label, value], i) => {
+    trackWidth(1, label); trackWidth(2, value);
+    const fill = (i % 2) ? ROW_FILL_B : ROW_FILL_A;
+    const labelCell = ws.getCell(r, 1);
+    labelCell.value = label;
+    labelCell.font = LABEL_FONT;
+    labelCell.fill = fill;
+    labelCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    labelCell.border = THIN_BORDER;
+    const valueCell = ws.getCell(r, 2);
+    valueCell.value = value;
+    valueCell.font = STAT_VALUE_FONT;
+    valueCell.fill = fill;
+    valueCell.alignment = CENTER;
+    valueCell.border = THIN_BORDER;
+    ws.getRow(r).height = 18;
+    r += 1;
+  });
+  r += 1;
+
+  ws.mergeCells(r, 1, r, 5);
+  ws.getCell(r, 1).value = 'Détail par succursale';
+  ws.getCell(r, 1).font = SUBTITLE_FONT;
+  r += 1;
+
+  const headers = ['Succursale', 'Statut', 'Fournisseurs', 'Changements retenus', 'Fichiers sources'];
+  headers.forEach((h, i) => {
+    const cell = ws.getCell(r, i + 1);
+    cell.value = h;
+    cell.fill = TABLE_HEADER_FILL;
+    cell.font = TABLE_HEADER_FONT;
+    cell.alignment = CENTER;
+    cell.border = THIN_BORDER;
+    if (i < 4) trackWidth(i + 1, h);
+  });
+  ws.getRow(r).height = 18;
+  r += 1;
+
+  // Largeur approximative (en caracteres) de la colonne 5, utilisee seulement pour estimer
+  // le nombre de lignes necessaires et calculer une hauteur de ligne suffisante.
+  const COL5_CHARS = 46;
+
+  // Avertissements non bloquants (ex. un meme fournisseur provenant de plusieurs fichiers
+  // pour une meme succursale) : accumules pendant la boucle, affiches dans leur propre
+  // section plus bas seulement s'il y en a — jamais de bruit visuel quand tout est normal.
+  const warnings = [];
+
+  // Un fichier par ligne dans "Fichiers sources" (plutot qu'une liste separee par des
+  // virgules sur une seule ligne, difficile a lire des que plusieurs fichiers sont
+  // associes a une succursale). Cette table ne contient plus que les succursales traitees
+  // avec succes : les fichiers ignores ont leur propre section "Anomalies détectées" plus bas.
+  for (const b of groupedByBranch) {
+    const sourceFiles = [...new Set(b.sections.flatMap(s => s.rows.map(row => row.sourceFile)))];
+    const detailText = sourceFiles.map(f => `•  ${f}`).join('\n');
+    trackWidth(1, b.branch); trackWidth(2, 'OK'); trackWidth(3, b.supplierCount); trackWidth(4, b.totalRows);
+    ws.getCell(r, 1).value = b.branch;
+    ws.getCell(r, 2).value = 'OK';
+    ws.getCell(r, 3).value = b.supplierCount;
+    ws.getCell(r, 4).value = b.totalRows;
+    ws.getCell(r, 5).value = detailText;
+    for (let c = 1; c <= 5; c++) {
+      const cell = ws.getCell(r, c);
+      cell.fill = OK_FILL;
+      cell.font = VALUE_FONT;
+      cell.alignment = c === 5 ? { horizontal: 'left', vertical: 'top', wrapText: true } : CENTER;
+      cell.border = THIN_BORDER;
+    }
+    const lines = estimateWrappedLines(detailText, COL5_CHARS);
+    ws.getRow(r).height = Math.max(18, lines * 14 + 4);
+    r += 1;
+
+    // Un même fournisseur ne devrait normalement provenir que d'un seul fichier pour une
+    // succursale donnée. S'il en vient de plusieurs, ce n'est pas forcément une erreur (un
+    // rapport principal + un addenda, par exemple), mais ça mérite d'être signalé plutôt que
+    // deviné silencieusement — conformément à la philosophie demandée.
+    for (const s of b.sections) {
+      const filesForSupplier = [...new Set(s.rows.map(row => row.sourceFile))];
+      if (filesForSupplier.length > 1) {
+        const codeStr = String(s.code).padStart(2, '0');
+        warnings.push(`${b.branch} — ${codeStr} - ${s.supplier} : ce fournisseur apparaît dans ${filesForSupplier.length} fichiers différents (${filesForSupplier.join(', ')}). Vérifiez qu'il ne s'agit pas d'un doublon.`);
+      }
+    }
+  }
+
+  if (warnings.length) {
+    r += 1;
+    ws.mergeCells(r, 1, r, 5);
+    ws.getCell(r, 1).value = `Avertissements (${warnings.length})`;
+    ws.getCell(r, 1).font = WARN_TITLE_FONT;
+    r += 1;
+    for (const w of warnings) {
+      ws.mergeCells(r, 1, r, 5);
+      const cell = ws.getCell(r, 1);
+      cell.value = `⚠  ${w}`;
+      cell.font = VALUE_FONT;
+      cell.fill = WARN_FILL;
+      cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+      cell.border = THIN_BORDER;
+      const lines = estimateWrappedLines(w, 130);
+      ws.getRow(r).height = Math.max(18, lines * 14 + 4);
+      r += 1;
+    }
+  }
+
+  // ---- Anomalies détectées : chaque fichier ignoré, avec la raison précise (jamais un
+  // simple "PDF invalide" générique) — pour que l'utilisateur comprenne immédiatement
+  // pourquoi un fichier n'a pas été traité, sans avoir à refaire plusieurs essais.
+  if (batchResult.excludedResults.length) {
+    r += 1;
+    ws.mergeCells(r, 1, r, 5);
+    ws.getCell(r, 1).value = `Anomalies détectées (${batchResult.excludedResults.length})`;
+    ws.getCell(r, 1).font = WARN_TITLE_FONT;
+    r += 1;
+    for (const f of batchResult.excludedResults) {
+      ws.mergeCells(r, 1, r, 5);
+      const cell = ws.getCell(r, 1);
+      const text = `•  ${f.fileName}\n   →  Fichier ignoré : ${f.reason}`;
+      cell.value = text;
+      cell.font = VALUE_FONT;
+      cell.fill = EXCLU_FILL;
+      cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+      cell.border = THIN_BORDER;
+      const lines = estimateWrappedLines(text, 130);
+      ws.getRow(r).height = Math.max(18, lines * 14 + 4);
+      r += 1;
+    }
+  }
+
+  ws.getColumn(1).width = clampWidth(colMaxLen[0] + 3, 14, 40);
+  ws.getColumn(2).width = clampWidth(colMaxLen[1] + 3, 10, 30);
+  ws.getColumn(3).width = clampWidth(colMaxLen[2] + 3, 10, 24);
+  ws.getColumn(4).width = clampWidth(colMaxLen[3] + 3, 14, 30);
+  ws.getColumn(5).width = 50;
+
+  // Pas de volet fige sur le Resume : un bloc fige aussi grand que le titre + les
+  // statistiques + l'en-tete du tableau donnait l'impression que le contenu "se repete" a
+  // chaque defilement (rapporte par l'utilisateur) — meme cause de confusion que le Bug 3
+  // sur les onglets succursale, meme solution : ne rien figer plutot que de patcher un
+  // affichage ambigu.
+  ws.views = [{ showGridLines: false }];
+  ws.pageSetup = { ...PRINT_SETUP, orientation: 'portrait' };
+
+  return ws;
+}
+
+async function buildWorkbookV2(batchResult, meta = {}) {
+  const generatedAt = meta.generatedAt || new Date();
+
+  const groupedByBranch = groupByBranchAndSupplier(batchResult.allRows);
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Outil de changement de prix';
+  wb.created = generatedAt;
+
+  // Le classeur livre aux gerants de departement ne contient plus la feuille Resume : ils
+  // n'ont besoin que des etiquettes de prix a changer en succursale, pas du nombre de PDF
+  // traites, de l'heure de generation ou des anomalies -- ces informations restent
+  // affichees uniquement sur la page web (voir renderMultiResults), qui est entierement
+  // independante de ce classeur et n'est donc pas affectee par ce retrait.
+  for (const b of groupedByBranch) {
+    const ws = wb.addWorksheet(b.sheetName);
+    applySectionRows(ws, b.sections);
+  }
+
+  wb.views = [{ activeTab: 0 }];
+
+  return { wb, groupedByBranch };
+}
+
+// ==================== Table fournisseurs (éditable, persistée localStorage) ====================
+const DEFAULT_SUPPLIERS = {
+  "1": "Kimpex", "3": "BSL", "4": "Thibault", "5": "Motovan", "10": "Hypnose",
+  "12": "Velocity Group Sport (Bell)", "14": "Auclair", "16": "Choko (motoneige)", "17": "Wolf Canada",
+  "21": "Full Bore", "22": "Powersportrider", "24": "MSD", "26": "Gamma Sales",
+  "27": "Splash & Dirt", "28": "Parts Canada", "31": "Pro-Lab", "38": "Driwash",
+  "41": "Ryders", "43": "Vip Air", "45": "Louis Garneau", "46": "Angora (motoneige)",
+  "47": "Angora (motoneige)", "48": "Quick Silver", "54": "Ressurgence", "56": "Ganka",
+  "58": "Mike Grassetti", "62": "Acton", "65": "Oakley", "71": "Importation T.A.",
+  "77": "Bilodeau", "86": "Matrix", "89": "Foxhead", "112": "Qualipièces",
+  "115": "Troy Lee Design", "116": "Choko (moto)", "130": "Distribution D.S.G.",
+  "132": "Conforteck", "135": "Wes Industries", "138": "Baffin", "140": "FXR",
+  "165": "Forma", "168": "Gestion RAC", "188": "Ben3th", "189": "Atlas",
+  "190": "6D", "193": "Fasthouse",
+};
+const STORAGE_KEY = 'vmmx_suppliers_v1';
+
+function loadSuppliers() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { ...DEFAULT_SUPPLIERS };
+}
+function saveSuppliers(map) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+}
+
+let suppliers = loadSuppliers();
+
+function renderSupplierTable() {
+  const body = document.getElementById('suppBody');
+  body.innerHTML = '';
+  const codes = Object.keys(suppliers).sort((a, b) => parseInt(a) - parseInt(b));
+  for (const code of codes) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" data-code="${escapeHtml(code)}" class="code-input" value="${escapeHtml(code)}"></td>
+      <td><input type="text" data-code="${escapeHtml(code)}" class="name-input" value="${escapeHtml(suppliers[code])}"></td>
+      <td><button class="rowbtn" data-code="${escapeHtml(code)}">✕</button></td>`;
+    body.appendChild(tr);
+  }
+  body.querySelectorAll('.name-input').forEach(inp => {
+    inp.addEventListener('change', () => {
+      suppliers[inp.dataset.code] = inp.value.trim();
+      saveSuppliers(suppliers);
+    });
+  });
+  body.querySelectorAll('.code-input').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const oldCode = inp.dataset.code;
+      const newCode = String(parseInt(inp.value.trim(), 10));
+      if (!newCode || newCode === 'NaN') { inp.value = oldCode; return; }
+      const name = suppliers[oldCode];
+      delete suppliers[oldCode];
+      suppliers[newCode] = name;
+      saveSuppliers(suppliers);
+      renderSupplierTable();
+    });
+  });
+  body.querySelectorAll('.rowbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      delete suppliers[btn.dataset.code];
+      saveSuppliers(suppliers);
+      renderSupplierTable();
+    });
+  });
+}
+renderSupplierTable();
+
+document.getElementById('addSuppBtn').addEventListener('click', () => {
+  let n = 1;
+  while (suppliers[String(n)]) n++;
+  suppliers[String(n)] = 'Nouveau fournisseur';
+  saveSuppliers(suppliers);
+  renderSupplierTable();
+});
+document.getElementById('resetSuppBtn').addEventListener('click', () => {
+  if (!confirm('Réinitialiser la liste des fournisseurs à la valeur par défaut ? Vos modifications seront perdues.')) return;
+  suppliers = { ...DEFAULT_SUPPLIERS };
+  saveSuppliers(suppliers);
+  renderSupplierTable();
+});
+
+// ==================== Panneau fournisseurs : discret, protégé par code admin ====================
+// L'accès complet (ajout/modification/suppression/réinitialisation) n'est jamais persisté :
+// suppliersUnlocked n'existe qu'en mémoire JS pour la durée de la page. Un rechargement ou
+// une fermeture de l'onglet crée un nouveau contexte JS, ce qui réactive automatiquement la
+// protection — comme demandé. Ce n'est pas une sécurité informatique (l'outil tourne
+// entièrement dans le navigateur) : le but est simplement d'éviter une modification accidentelle.
+const ADMIN_CODE = '3366';
+let suppliersUnlocked = false;
+const suppSettingsBtn = document.getElementById('suppSettingsBtn');
+const suppPanel = document.getElementById('suppPanel');
+const suppLockView = document.getElementById('suppLockView');
+const suppUnlockedView = document.getElementById('suppUnlockedView');
+const suppCodeInput = document.getElementById('suppCodeInput');
+const suppCodeError = document.getElementById('suppCodeError');
+
+function refreshSuppView() {
+  if (suppliersUnlocked) {
+    suppLockView.style.display = 'none';
+    suppUnlockedView.style.display = 'block';
+  } else {
+    suppLockView.style.display = 'block';
+    suppUnlockedView.style.display = 'none';
+  }
+}
+
+suppSettingsBtn.addEventListener('click', () => {
+  const isOpen = suppPanel.style.display !== 'none';
+  if (isOpen) { suppPanel.style.display = 'none'; return; }
+  suppPanel.style.display = 'block';
+  refreshSuppView();
+  if (!suppliersUnlocked) suppCodeInput.focus();
+});
+
+function tryUnlockSuppliers() {
+  if (suppCodeInput.value.trim() === ADMIN_CODE) {
+    suppliersUnlocked = true;
+    suppCodeError.style.display = 'none';
+    suppCodeInput.value = '';
+    refreshSuppView();
+  } else {
+    suppCodeError.style.display = 'block';
+  }
+}
+document.getElementById('suppUnlockBtn').addEventListener('click', tryUnlockSuppliers);
+suppCodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlockSuppliers(); });
+
+// ==================== Gestion des fichiers ====================
+let selectedFiles = [];
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const chooseFilesBtn = document.getElementById('chooseFilesBtn');
+const clearFilesBtn = document.getElementById('clearFilesBtn');
+const fileListHeader = document.getElementById('fileListHeader');
+const fileCountEl = document.getElementById('fileCount');
+const fileListEl = document.getElementById('fileList');
+const genBtn = document.getElementById('genBtn');
+const logEl = document.getElementById('log');
+const alertBox = document.getElementById('alertBox');
+
+// Petite icone PDF reutilisee dans chaque carte de fichier (version reduite de celle de la
+// zone de depot) — purement decorative, aucun impact sur la logique.
+const FILE_CARD_ICON = `<svg width="22" height="22" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M14 4h20l8 8v40a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="#EAF2FD" stroke="#2E75B6" stroke-width="2.5"/>
+  <path d="M34 4v8h8" fill="none" stroke="#2E75B6" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="13" y="29" width="20" height="11" rx="2" fill="#2E75B6"/>
+  <text x="23" y="37.3" font-family="Arial, sans-serif" font-size="8.5" font-weight="bold" fill="#fff" text-anchor="middle">PDF</text>
+</svg>`;
+
+// Formate une duree en millisecondes pour affichage (purement cosmetique, utilise uniquement
+// pour la statistique "Temps de traitement" du bloc de synthese des resultats).
+function formatElapsed(ms) {
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  return `${(ms / 1000).toFixed(1)} s`;
+}
+
+// La liste de fichiers n'est qu'une file d'attente : glisser-deposer ou choisir des fichiers
+// (plusieurs fois de suite, depuis differents dossiers si besoin) ne fait qu'ajouter a
+// selectedFiles et rafraichir cet affichage. Aucun traitement (classifyAndProcessFile et
+// tout ce qui suit) n'est jamais declenche ici — seul le clic sur genBtn (voir plus bas,
+// section "Generation") demarre le traitement reel.
+function renderFileList() {
+  fileListEl.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'file-card';
+    div.innerHTML = `${FILE_CARD_ICON}<span class="file-card-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span><button data-i="${i}" title="Retirer ce fichier" aria-label="Retirer ${escapeHtml(f.name)}">✕</button>`;
+    fileListEl.appendChild(div);
+  });
+  fileListEl.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedFiles.splice(parseInt(btn.dataset.i, 10), 1);
+      renderFileList();
+    });
+  });
+  fileCountEl.textContent = `Fichiers sélectionnés (${selectedFiles.length})`;
+  fileListHeader.style.display = selectedFiles.length ? 'flex' : 'none';
+  genBtn.disabled = selectedFiles.length === 0;
+}
+
+function addFiles(fileArr) {
+  // Tous les fichiers deposes sont acceptes ici, meme s'ils ne sont pas des PDF valides :
+  // filtrer silencieusement a cette etape cacherait un fichier problematique a l'utilisateur
+  // sans explication. La validation reelle (format, lisibilite, structure) se fait au moment
+  // de la generation, avec une raison precise affichee pour chaque anomalie (voir
+  // classifyAndProcessFile) — conformement au principe "avertir plutot que deviner".
+  for (const f of fileArr) {
+    const dup = selectedFiles.some(sf => sf.name === f.name && sf.size === f.size && sf.lastModified === f.lastModified);
+    if (!dup) selectedFiles.push(f);
+  }
+  renderFileList();
+}
+
+// Seul le bouton dedie ouvre l'Explorateur de fichiers (la zone de depot elle-meme ne
+// reagit qu'au glisser-deposer) — evite un double declenchement de la boite de dialogue
+// si la zone entiere et le bouton etaient tous deux cliquables.
+chooseFilesBtn.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+fileInput.addEventListener('change', (e) => { addFiles([...e.target.files]); fileInput.value = ''; });
+clearFilesBtn.addEventListener('click', () => { selectedFiles = []; renderFileList(); });
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  addFiles([...e.dataTransfer.files]);
+});
+
+function log(msg) {
+  logEl.textContent += msg + '\n';
+}
+function showAlert(msg) {
+  alertBox.textContent = msg;
+  alertBox.style.display = 'block';
+}
+function hideAlert() {
+  alertBox.style.display = 'none';
+  alertBox.textContent = '';
+}
+
+// Declenche le telechargement d'un buffer (ArrayBuffer/Uint8Array) sous un nom donne, sans
+// jamais dependre d'une variable globale partagee entre plusieurs appels successifs.
+function triggerDownload(buffer, filename, mimeType) {
+  const blob = new Blob([buffer], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Charge JSZip depuis le CDN uniquement au moment ou elle est reellement necessaire (plusieurs
+// departements detectes dans le meme lot). Dans le cas le plus frequent (un seul departement),
+// cette bibliotheque n'est jamais telechargee : aucun cout ajoute au chemin le plus courant.
+let jsZipLoadPromise = null;
+function loadJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  if (jsZipLoadPromise) return jsZipLoadPromise;
+  jsZipLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    script.onload = () => resolve(window.JSZip);
+    script.onerror = () => reject(new Error("Impossible de charger la bibliothèque de compression (JSZip) — vérifiez votre connexion internet."));
+    document.head.appendChild(script);
+  });
+  return jsZipLoadPromise;
+}
+
+function renderMultiResults(split, generated, downloadedName, elapsedMs) {
+  const deptCount = generated.length;
+  const deptNames = generated.map(g => departmentLabel(g.batch.department) || '—').join(', ');
+  const summaryEl = document.getElementById('resultSummary');
+  summaryEl.textContent = deptCount === 1
+    ? `1 département détecté (${deptNames}) → 1 fichier généré : ${downloadedName}`
+    : `${deptCount} départements détectés (${deptNames}) → ${deptCount} fichiers générés, regroupés dans "${downloadedName}".`;
+
+  // Carte de synthese globale (KPI) : uniquement une agregation d'affichage a partir de
+  // donnees deja produites par le traitement (split.okResults / split.batches) — aucun
+  // nouveau calcul metier. "Produits retenus/ignores" agregent, sur l'ensemble du lot, la
+  // meme paire lues/retenues deja calculee par departement dans la feuille Resume (V2.6).
+  const totalPdfProcessed = split.okResults.length;
+  const totalSuppliersAll = new Set(split.okResults.flatMap(r => r.rows.map(row => row.code))).size;
+  const totalBranchesAll = new Set(split.okResults.flatMap(r => r.rows.map(row => row.branch))).size;
+  const totalRetainedAll = split.okResults.reduce((sum, r) => sum + r.rows.length, 0);
+  const totalRawAll = split.okResults.reduce((sum, r) => sum + (r.stats ? r.stats.rawRows : 0), 0);
+  const totalIgnoredAll = totalRawAll - totalRetainedAll;
+
+  const kpis = [
+    ['PDF traités', totalPdfProcessed],
+    ['Fournisseurs détectés', totalSuppliersAll],
+    ['Succursales détectées', totalBranchesAll],
+    ['Départements détectés', deptCount],
+    ['Produits retenus', totalRetainedAll],
+    ['Produits ignorés', totalIgnoredAll],
+    ['Temps de traitement', elapsedMs != null ? formatElapsed(elapsedMs) : '—'],
+  ];
+  document.getElementById('statGrid').innerHTML = kpis.map(([label, value]) => `
+    <div class="stat-tile">
+      <div class="stat-value">${escapeHtml(String(value))}</div>
+      <div class="stat-label">${escapeHtml(label)}</div>
+    </div>`).join('');
+
+  const container = document.getElementById('departmentResults');
+  container.innerHTML = '';
+  for (const g of generated) {
+    const deptLabel = departmentLabel(g.batch.department) || '—';
+    const totalSuppliers = new Set(g.batch.allRows.map(r => r.code)).size;
+
+    const block = document.createElement('div');
+    block.className = 'dept-block';
+
+    let html = `<h3>${escapeHtml(deptLabel)} — ${escapeHtml(g.filename)}</h3>`;
+    html += `<div class="kv-grid">
+      <div class="k">Succursales</div><div>${g.batch.branches.length}</div>
+      <div class="k">PDF reçus / traités / ignorés</div><div>${g.batch.fileResults.length} / ${g.batch.okResults.length} / ${g.batch.excludedResults.length}</div>
+      <div class="k">Fournisseurs</div><div>${totalSuppliers}</div>
+      <div class="k">Changements retenus</div><div>${g.batch.allRows.length}</div>
+    </div>`;
+
+    html += '<table class="summary-table"><caption>Détail par succursale</caption><tr><th>Succursale</th><th>Fournisseurs</th><th>Changements retenus</th></tr>';
+    for (const b of g.groupedByBranch) {
+      html += `<tr><td>${escapeHtml(b.branch)}</td><td>${b.supplierCount}</td><td>${b.totalRows}</td></tr>`;
+    }
+    html += '</table>';
+
+    // Anomalies propres a ce departement (ex. succursale non detectee sur un fichier dont le
+    // departement etait tout de meme lisible) — en plus des anomalies globales plus bas.
+    if (g.batch.excludedResults.length) {
+      html += `<table class="summary-table"><tr><th colspan="2">Anomalies pour ce département (${g.batch.excludedResults.length})</th></tr><tr><th>Fichier</th><th>Raison</th></tr>`;
+      for (const f of g.batch.excludedResults) {
+        html += `<tr><td>${escapeHtml(f.fileName)}</td><td><span class="badge warn">${escapeHtml(f.reason)}</span></td></tr>`;
+      }
+      html += '</table>';
+    }
+
+    block.innerHTML = html;
+    container.appendChild(block);
+  }
+
+  // Anomalies globales : fichiers dont on n'a pu determiner aucun departement du tout (mauvais
+  // format, corrompu, structure non reconnue...) — n'appartiennent a aucun fichier Excel
+  // specifique, affichees une seule fois ici.
+  const excludedTable = document.getElementById('excludedTable');
+  if (split.globalExcluded.length) {
+    let eHtml = `<tr><th colspan="2">Anomalies non classables (${split.globalExcluded.length})</th></tr><tr><th>Fichier</th><th>Raison</th></tr>`;
+    for (const f of split.globalExcluded) {
+      eHtml += `<tr><td>${escapeHtml(f.fileName)}</td><td><span class="badge warn">${escapeHtml(f.reason)}</span></td></tr>`;
+    }
+    excludedTable.innerHTML = eHtml;
+    excludedTable.style.display = '';
+  } else {
+    excludedTable.innerHTML = '';
+    excludedTable.style.display = 'none';
+  }
+
+  document.getElementById('resultsCard').style.display = 'block';
+
+  // Une fois le Résumé affiché, le panneau fournisseurs (configuration, rarement utile à ce
+  // stade) s'efface complètement pour laisser toute la place aux résultats — il réapparaît
+  // dès qu'une nouvelle génération est lancée (voir plus bas).
+  suppPanel.style.display = 'none';
+  suppSettingsBtn.style.display = 'none';
+}
+
+// ==================== Génération ====================
+genBtn.addEventListener('click', async () => {
+  genBtn.disabled = true;
+  logEl.textContent = '';
+  hideAlert();
+  document.getElementById('resultsCard').style.display = 'none';
+  suppSettingsBtn.style.display = '';
+  const startTime = performance.now(); // uniquement pour l'affichage "Temps de traitement" ; ne change rien au traitement lui-meme
+  log(`⏳ Traitement de ${selectedFiles.length} fichier(s)...`);
+
+  try {
+    const fileResults = [];
+    for (const file of selectedFiles) {
+      log(`  → Lecture de ${file.name}...`);
+      const result = await classifyAndProcessFile(file, suppliers);
+      fileResults.push(result);
+      if (result.status === 'ok') {
+        log(`    Succursale : ${result.branch} | Département : ${departmentLabel(result.department)} | ${result.rows.length} changement(s) retenu(s) sur ${result.stats.rawRows} ligne(s) lue(s).`);
+      } else {
+        log(`    ⚠️ Ignoré : ${result.reason}`);
+      }
+    }
+
+    const split = splitByDepartment(fileResults);
+
+    if (split.batches.length === 0) {
+      showAlert("❌ Aucun fichier n'a pu être traité (succursale ou département non détecté, PDF illisible, ou aucun changement de prix réel trouvé). Voir le détail par fichier ci-dessus.");
+      genBtn.disabled = false;
+      return;
+    }
+
+    log(`⏳ Génération de ${split.batches.length} fichier(s) Excel (${split.batches.length} département(s) détecté(s))...`);
+
+    const generated = [];
+    for (const batch of split.batches) {
+      const { wb, groupedByBranch } = await buildWorkbookV2(batch);
+      const buffer = await wb.xlsx.writeBuffer();
+      const filename = generateFileName(batch.department, batch.branches);
+      generated.push({ batch, groupedByBranch, buffer, filename });
+      log(`  → ${filename} (${batch.allRows.length} changement(s), ${batch.branches.length} succursale(s))`);
+    }
+
+    const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    let downloadedName;
+
+    if (generated.length === 1) {
+      downloadedName = generated[0].filename;
+      triggerDownload(generated[0].buffer, downloadedName, XLSX_MIME);
+    } else {
+      // Plusieurs departements : un seul ZIP plutot que plusieurs telechargements automatiques,
+      // que les navigateurs bloquent ou soumettent a confirmation au-dela d'un ou deux fichiers
+      // (voir analyse d'architecture) — un seul clic, un seul fichier, aucun risque de blocage.
+      log('⏳ Compression des fichiers dans une archive ZIP...');
+      const JSZipCtor = await loadJSZip();
+      const zip = new JSZipCtor();
+      for (const g of generated) zip.file(g.filename, g.buffer);
+      const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+      downloadedName = generateZipFileName(split.batches.flatMap(b => b.branches));
+      triggerDownload(zipBuffer, downloadedName, 'application/zip');
+    }
+
+    log(`✅ Téléchargement généré : ${downloadedName}`);
+    renderMultiResults(split, generated, downloadedName, performance.now() - startTime);
+  } catch (err) {
+    console.error(err);
+    log('❌ Erreur : ' + err.message);
+  }
+  genBtn.disabled = false;
+});
+</script>
+</body>
+</html>
